@@ -151,6 +151,11 @@ QLabel#pageSubtitle {
     color: #767d87;
     font-size: 11px;
 }
+QLabel#welcomeLine {
+    color: #8f97a2;
+    font-size: 11px;
+    padding-top: 3px;
+}
 QLabel#sectionTitle {
     color: #a8aeb8;
     font-size: 10px;
@@ -253,6 +258,14 @@ QComboBox#field:focus {
 /* No ::down-arrow rule: Qt cannot draw the CSS zero-size-border triangle, and
    styling the sub-control turns it into a filled square. Leaving it alone lets
    the Fusion style paint its own arrow, which already follows the text colour. */
+/* The popup is a top-level QComboBoxPrivateContainer, not a child of the combo,
+   so the view inside it does not match a descendant selector anchored on the
+   combo. Both the container and the view are named here instead. */
+QComboBoxPrivateContainer {
+    background: #14171b;
+    border: 1px solid #282d34;
+    border-radius: 6px;
+}
 QComboBox#field QAbstractItemView {
     background: #14171b;
     border: 1px solid #282d34;

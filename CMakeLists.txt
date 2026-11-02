@@ -12,6 +12,8 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets Svg Gui)
 set(CAIRN_SOURCES
     src/theme.h
     src/theme.cpp
+    src/systeminfo.h
+    src/systeminfo.cpp
     src/icons.h
     src/icons.cpp
     src/chrome.h
@@ -81,6 +83,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/e2e.cpp")
         deskcheck:tools/deskcheck.cpp        # desktop icon-position polling
         debugcheck:tools/debugcheck.cpp      # bugs found in the debug pass
         headershot:tools/headershot.cpp      # renders the header for inspection
+        popupshot:tools/popupshot.cpp        # reproduces the sort popup
     )
     foreach(entry IN LISTS CAIRN_TOOLS)
         string(REPLACE ":" ";" parts "${entry}")

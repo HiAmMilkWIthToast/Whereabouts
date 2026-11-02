@@ -4,6 +4,7 @@
 #include <QComboBox>
 #include <QEventLoop>
 #include <QImage>
+#include <QKeyEvent>
 #include <QPushButton>
 #include <QStyleFactory>
 #include <QTimer>
@@ -56,6 +57,23 @@ int main(int argc, char *argv[])
     window.show();
     pump(300);
 
+    // presentSession goes straight to the detail page, but the greeting lives
+    // on the library page, so step back to it the way Escape does.
+    {
+        QKeyEvent esc(QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier);
+        QApplication::sendEvent(&window, &esc);
+        pump(200);
+    }
+
+    // The Sessions page first, so the greeting is captured where it lives.
+    {
+        QImage lib(window.width(), window.height(),
+                   QImage::Format_ARGB32_Premultiplied);
+        lib.fill(QColor(QStringLiteral("#0b0d10")));
+        window.render(&lib, QPoint(), QRegion(), QWidget::DrawChildren);
+        lib.save(QStringLiteral("C:/Users/Kille/MonkeyCode/shot_library.png"));
+    }
+
     // Sorting only applies to the list, so the control (and this shot) needs
     // the window in list mode.
     for (QPushButton *b : window.findChildren<QPushButton *>()) {
@@ -66,10 +84,9 @@ int main(int argc, char *argv[])
     }
     pump(250);
 
-    QImage img(window.width(), 190, QImage::Format_ARGB32_Premultiplied);
+    QImage img(window.width(), window.height(), QImage::Format_ARGB32_Premultiplied);
     img.fill(QColor(QStringLiteral("#0b0d10")));
-    window.render(&img, QPoint(), QRegion(0, 0, window.width(), 190),
-                  QWidget::DrawChildren);
+    window.render(&img, QPoint(), QRegion(), QWidget::DrawChildren);
     img.save(QStringLiteral("C:/Users/Kille/MonkeyCode/shot_header.png"));
 
     if (auto *box = window.findChild<QComboBox *>(QStringLiteral("field"))) {

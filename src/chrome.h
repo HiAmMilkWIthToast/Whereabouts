@@ -6,6 +6,7 @@
 #include <QWidget>
 
 class QLabel;
+class QTimer;
 class QVBoxLayout;
 class QHBoxLayout;
 class QVariantAnimation;
@@ -118,11 +119,21 @@ public:
     void setCounts(const QString &text);
     void setHint(const QString &text);
 
+    // The clock shows local time and updates itself; the caller only decides
+    // whether to show it.
+    void setClockVisible(bool visible);
+
 private:
+    void refreshClock();
+    void refreshDate();
+
     QLabel *m_state = nullptr;
     QLabel *m_session = nullptr;
     QLabel *m_counts = nullptr;
     QLabel *m_hint = nullptr;
+    QLabel *m_date = nullptr;
+    QLabel *m_clock = nullptr;
+    QTimer *m_tick = nullptr;
 };
 
 // Base class for every top-level window in the app: rounded frameless shell

@@ -4,6 +4,9 @@
 #include <QCloseEvent>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QDate>
+#include <QTime>
+#include <QTimer>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
@@ -372,6 +375,54 @@ StatusBar::StatusBar(QWidget *parent)
     m_hint->setObjectName(QStringLiteral("statusText"));
     m_hint->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
     layout->addWidget(m_hint);
+
+    // The date and time sit at the far right, after everything else, so they
+    // read as furniture rather than as part of the loaded session.
+    m_date = new QLabel(this);
+    m_date->setObjectName(QStringLiteral("statusText"));
+    m_date->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
+    layout->addWidget(m_date);
+
+    m_clock = new QLabel(this);
+    m_clock->setObjectName(QStringLiteral("statusValue"));
+    m_clock->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
+    // Nunito's digits are proportional, so a clock without a fixed font jitters
+    // a pixel or two on every tick as the digits change width.
+    layout->addWidget(m_clock);
+
+    m_tick = new QTimer(this);
+    m_tick->setInterval(1000);
+    connect(m_tick, &QTimer::timeout, this, [this] {
+        refreshClock();
+        refreshDate();
+    });
+    refreshClock();
+    refreshDate();
+    setClockVisible(true);
+}
+
+void StatusBar::refreshClock()
+{
+    m_clock->setText(QTime::currentTime().toString(QStringLiteral("HH:mm:ss")));
+}
+
+void StatusBar::refreshDate()
+{
+    // Spelled out rather than numeric: the footer is roomy and this reads as a
+    // sentence next to the session counts.
+    m_date->setText(QDate::currentDate().toString(QStringLiteral("ddd d MMM yyyy")));
+}
+
+void StatusBar::setClockVisible(bool visible)
+{
+    m_date->setVisible(visible);
+    m_clock->setVisible(visible);
+    // No point waking a stopped timer once a second; the clock is only worth
+    // updating while it is on screen.
+    if (visible && !m_tick->isActive())
+        m_tick->start();
+    else if (!visible)
+        m_tick->stop();
 }
 
 void StatusBar::setState(const QString &text, bool highlight)

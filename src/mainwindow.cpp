@@ -6,6 +6,7 @@
 #include "layoutview.h"
 #include "onboarding.h"
 #include "sessionstore.h"
+#include "systeminfo.h"
 #include "theme.h"
 
 #include <QApplication>
@@ -28,6 +29,7 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QSettings>
+#include <QTime>
 #include <QGuiApplication>
 #include <QScreen>
 #include <QStackedWidget>
@@ -206,6 +208,19 @@ QWidget *MainWindow::buildLibraryPage()
     m_libraryCount = new QLabel(QString(), page);
     m_libraryCount->setObjectName(QStringLiteral("pageSubtitle"));
     titles->addWidget(m_libraryCount);
+
+    // One line addressed to whoever is sitting here, so the window does not
+    // open as a bare list. The name comes from the account rather than a stored
+    // setting, and if it cannot be read the greeting simply goes unnamed.
+    m_welcome = new QLabel(page);
+    m_welcome->setObjectName(QStringLiteral("welcomeLine"));
+    const QString user = SystemInfo::userName();
+    const QString greeting = SystemInfo::greetingFor(QTime::currentTime());
+    m_welcome->setText(user.isEmpty()
+                           ? greeting + QStringLiteral(".")
+                           : greeting + QStringLiteral(", ") + user + QStringLiteral("."));
+    titles->addWidget(m_welcome);
+
     head->addLayout(titles, 1);
 
     m_search = new QLineEdit(page);

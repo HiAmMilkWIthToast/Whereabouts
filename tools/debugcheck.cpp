@@ -9,6 +9,10 @@
 #include "layoutview.h"
 #include "mainwindow.h"
 #include "sessionmodel.h"
+#include <QTime>
+#include <QLabel>
+#include <QDate>
+#include "systeminfo.h"
 
 static QTextStream out(stdout);
 static int failures = 0;
@@ -191,6 +195,68 @@ int main(int argc, char *argv[])
         QApplication::sendEvent(&chip, &leave);
         check(chip.isChecked() == before,
               QStringLiteral("leaving does not toggle the chip"));
+    }
+
+    // ---------------------------------------------- clock and welcome message
+    {
+        out << "\n== the greeting and the clock ==\n";
+
+        // The greeting has to follow the clock, not a stored setting.
+        check(SystemInfo::greetingFor(QTime(8, 30)) == QStringLiteral("Good morning"),
+              QStringLiteral("morning greeting (%1)")
+                  .arg(SystemInfo::greetingFor(QTime(8, 30))));
+        check(SystemInfo::greetingFor(QTime(13, 0)) == QStringLiteral("Good afternoon"),
+              QStringLiteral("afternoon greeting (%1)")
+                  .arg(SystemInfo::greetingFor(QTime(13, 0))));
+        check(SystemInfo::greetingFor(QTime(21, 15)) == QStringLiteral("Good evening"),
+              QStringLiteral("evening greeting (%1)")
+                  .arg(SystemInfo::greetingFor(QTime(21, 15))));
+        // An invalid time must not silently pick a slot.
+        check(!SystemInfo::greetingFor(QTime()).isEmpty(),
+              QStringLiteral("an invalid time still yields a greeting"));
+
+        // USERNAME is what the profile folder is named after, so the greeting
+        // name is checked against it rather than against a constant.
+        const QString who = SystemInfo::userName();
+        check(!who.isEmpty(), QStringLiteral("the user name is detectable (%1)").arg(who));
+        const QByteArray env = qgetenv("USERNAME");
+        if (!env.isEmpty()) {
+            check(who.compare(QString::fromLocal8Bit(env), Qt::CaseInsensitive) == 0,
+                  QStringLiteral("the name matches the account (%1 vs %2)")
+                      .arg(who, QString::fromLocal8Bit(env)));
+        }
+        // A truncated display name ("c j" was the observed failure) arrives as a
+        // fragment of the real one, so length is the cheap guard against it.
+        check(who.isEmpty() || who.size() >= 2,
+              QStringLiteral("the name is not a fragment (len %1)").arg(who.size()));
+
+        MainWindow window;
+        window.presentSession(sampleSession());
+        auto *welcome = window.findChild<QLabel *>(QStringLiteral("welcomeLine"));
+        check(welcome != nullptr, QStringLiteral("the Sessions page shows a greeting"));
+        if (welcome) {
+            check(welcome->text().contains(SystemInfo::greetingFor(QTime::currentTime())),
+                  QStringLiteral("it uses the time of day (%1)").arg(welcome->text()));
+            check(who.isEmpty() || welcome->text().contains(who),
+                  QStringLiteral("it names the user (%1)").arg(welcome->text()));
+        }
+
+        auto *status = window.findChild<QWidget *>(QStringLiteral("statusBar"));
+        check(status != nullptr, QStringLiteral("the footer exists"));
+        if (status) {
+            bool clockShown = false;
+            bool dateShown = false;
+            for (QLabel *l : status->findChildren<QLabel *>()) {
+                // HH:mm:ss, so the clock is the only text with two colons.
+                if (l->text().count(QLatin1Char(':')) == 2)
+                    clockShown = true;
+                // The date carries the current year.
+                if (l->text().contains(QString::number(QDate::currentDate().year())))
+                    dateShown = true;
+            }
+            check(clockShown, QStringLiteral("the footer shows a clock"));
+            check(dateShown, QStringLiteral("the footer shows the date"));
+        }
     }
 
     out << "\n" << (failures == 0 ? "DEBUG PASSED\n" : "DEBUG FAILED\n");

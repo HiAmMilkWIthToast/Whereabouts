@@ -82,6 +82,7 @@ private:
     QListWidget *m_list = nullptr;
     QLineEdit *m_search = nullptr;
     QLabel *m_libraryCount = nullptr;
+    QLabel *m_welcome = nullptr;
     QList<Session> m_sessions;
 
     // detail
