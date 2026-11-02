@@ -320,6 +320,26 @@ QPushButton#ghost:pressed {
 QPushButton#ghost:disabled {
     color: #4c525a;
 }
+/* The way back from a snapshot. Gold, matching the archive tone the kind
+   colours already use, so it reads as a location marker rather than as another
+   action sitting next to Export. Its own name rather than #ghost, which other
+   controls share and should stay neutral. */
+QPushButton#backLink {
+    background: transparent;
+    border: 1px solid #3a3226;
+    border-radius: 6px;
+    color: #d0a86a;
+    font-size: 11px;
+    padding: 4px 10px;
+}
+QPushButton#backLink:hover {
+    background: #221d16;
+    border-color: #d0a86a;
+    color: #e8c48d;
+}
+QPushButton#backLink:pressed {
+    background: #1a1611;
+}
 QPushButton#secondary {
     background: #171a1f;
     border: 1px solid #282d34;

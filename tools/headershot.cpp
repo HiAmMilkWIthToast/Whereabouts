@@ -56,6 +56,14 @@ int main(int argc, char *argv[])
     window.presentSession(s);
     window.show();
     pump(300);
+    // The detail page, where the "Sessions" way back and the sort control are.
+    {
+        QImage detail(window.width(), window.height(),
+                     QImage::Format_ARGB32_Premultiplied);
+        detail.fill(QColor(QStringLiteral("#0b0d10")));
+        window.render(&detail, QPoint(), QRegion(), QWidget::DrawChildren);
+        detail.save(QStringLiteral("C:/Users/Kille/MonkeyCode/shot_detail.png"));
+    }
 
     // presentSession goes straight to the detail page, but the greeting lives
     // on the library page, so step back to it the way Escape does.
@@ -65,7 +73,7 @@ int main(int argc, char *argv[])
         pump(200);
     }
 
-    // The Sessions page first, so the greeting is captured where it lives.
+    // The Sessions page, so the greeting is captured where it lives.
     {
         QImage lib(window.width(), window.height(),
                    QImage::Format_ARGB32_Premultiplied);
@@ -74,8 +82,12 @@ int main(int argc, char *argv[])
         lib.save(QStringLiteral("C:/Users/Kille/MonkeyCode/shot_library.png"));
     }
 
-    // Sorting only applies to the list, so the control (and this shot) needs
-    // the window in list mode.
+    // Back into the snapshot: the sort control only exists on that page, and
+    // the list mode it applies to is reached from there.
+    window.presentSession(s);
+    pump(200);
+
+    // Sorting only applies to the list, so the control needs list mode.
     for (QPushButton *b : window.findChildren<QPushButton *>()) {
         if (b->text() == QStringLiteral("List")) {
             b->click();

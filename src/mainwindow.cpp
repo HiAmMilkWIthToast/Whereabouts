@@ -334,7 +334,7 @@ QWidget *MainWindow::buildDetailPage()
     head->setSpacing(10);
 
     auto *back = new QPushButton(QStringLiteral("Sessions"), page);
-    back->setObjectName(QStringLiteral("ghost"));
+    back->setObjectName(QStringLiteral("backLink"));
     back->setCursor(Qt::PointingHandCursor);
     back->setFixedHeight(24);
     // The page title sits immediately after this button, so it needs a little

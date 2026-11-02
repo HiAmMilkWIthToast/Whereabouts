@@ -12,6 +12,11 @@
 
 #include "elidedlabel.h"
 #include "mainwindow.h"
+#include "theme.h"
+#include <QPalette>
+#include <QStyle>
+#include <QPushButton>
+#include <QRegularExpression>
 #include "sessionmodel.h"
 #include "sessionstore.h"
 
@@ -244,6 +249,54 @@ int main(int argc, char *argv[])
             check(stack->currentIndex() == 1,
                   QStringLiteral("picking a snapshot opens it (page %1)")
                       .arg(stack->currentIndex()));
+        }
+    }
+
+    out << QLatin1Char(10) << "== the way back is gold, not grey ==" << QLatin1Char(10);
+    {
+        // The button is the one control that leaves the snapshot, so it is
+        // styled apart from the neutral ghost buttons beside it.
+        QPushButton *back = nullptr;
+        for (QPushButton *b : window.findChildren<QPushButton *>()) {
+            if (b->text() == QStringLiteral("Sessions")) {
+                back = b;
+                break;
+            }
+        }
+        check(back != nullptr, QStringLiteral("the Sessions button exists"));
+        if (back) {
+            check(back->objectName() == QStringLiteral("backLink"),
+                  QStringLiteral("it uses the gold style, not #ghost (%1)")
+                      .arg(back->objectName()));
+
+            const QString sheet = Theme::buildStyleSheet();
+            check(sheet.contains(QStringLiteral("QPushButton#backLink")),
+                  QStringLiteral("the stylesheet styles it"));
+
+            // The colour is parsed by the style sheet at paint time, so the
+            // widget's palette does not carry it; read the rule itself.
+            int at = sheet.indexOf(QStringLiteral("QPushButton#backLink {"));
+            check(at >= 0, QStringLiteral("the rule is findable"));
+            if (at >= 0) {
+                const int close = sheet.indexOf(QLatin1Char('}'), at);
+                const QString rule = sheet.mid(at, close - at);
+
+                const QRegularExpression colorRe(
+                    QStringLiteral("color:[ ]*(#[0-9a-fA-F]{6})"));
+                const auto m = colorRe.match(rule);
+                check(m.hasMatch(), QStringLiteral("the rule sets a colour"));
+                if (m.hasMatch()) {
+                    const QColor text(m.captured(1));
+                    // Gold: red leads, green follows, blue trails.
+                    check(text.isValid() && text.red() > text.green()
+                              && text.green() > text.blue(),
+                          QStringLiteral("the text is a warm tone (%1)")
+                              .arg(text.name()));
+                    check(text.red() - text.blue() >= 40,
+                          QStringLiteral("and reads as gold, not beige (%1)")
+                              .arg(text.name()));
+                }
+            }
         }
     }
 
