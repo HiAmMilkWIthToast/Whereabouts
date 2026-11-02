@@ -2,6 +2,7 @@
 #include <QApplication>
 #include <QDir>
 #include <QFile>
+#include <QImage>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListView>
@@ -297,6 +298,54 @@ int main(int argc, char *argv[])
                               .arg(text.name()));
                 }
             }
+        }
+    }
+
+    out << QLatin1Char(10) << "== the logo is gold, and its file exists ==" << QLatin1Char(10);
+    {
+        // The mark was drawn with the interactive accent, which made the logo
+        // read as another control. It has its own tone now.
+        const QColor mark = Theme::brand();
+        check(mark.red() > mark.green() && mark.green() > mark.blue(),
+              QStringLiteral("the brand tone is warm (%1)").arg(mark.name()));
+
+        // The same colour the Sessions button uses, so the two agree.
+        const QString sheet = Theme::buildStyleSheet();
+        check(sheet.contains(mark.name(), Qt::CaseInsensitive),
+              QStringLiteral("the stylesheet uses the same tone (%1)")
+                  .arg(mark.name()));
+
+        // The committed icon files, which are what the resource compiles and
+        // what a person sees in Explorer.
+        const QStringList files = {
+            QStringLiteral(CAIRN_RES_DIR "/cairn.ico"),
+            QStringLiteral(CAIRN_RES_DIR "/cairn-256.png"),
+        };
+        for (const QString &f : files) {
+            check(QFile::exists(f), QStringLiteral("present: %1").arg(f));
+        }
+
+        const QImage png(QStringLiteral(CAIRN_RES_DIR "/cairn-256.png"));
+        check(!png.isNull() && png.width() == 256 && png.height() == 256,
+              QStringLiteral("the PNG is 256x256 (%1x%2)")
+                  .arg(png.width()).arg(png.height()));
+
+        if (!png.isNull()) {
+            // Somewhere in the middle of the tile there must be gold; a blank or
+            // monochrome icon would pass a mere "file exists" check.
+            bool foundGold = false;
+            for (int y = 0; y < png.height() && !foundGold; y += 2) {
+                for (int x = 0; x < png.width() && !foundGold; x += 2) {
+                    const QColor c = png.pixelColor(x, y);
+                    if (c.red() > 150 && c.green() > 110 && c.blue() < 130
+                        && c.red() > c.blue() + 50) {
+                        foundGold = true;
+                    }
+                }
+            }
+            check(foundGold, QStringLiteral("the icon is drawn in gold"));
+            check(png.pixelColor(2, 2).alpha() == 0,
+                  QStringLiteral("the corners are transparent, not a black box"));
         }
     }
 

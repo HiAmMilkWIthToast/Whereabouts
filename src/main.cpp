@@ -32,7 +32,7 @@ QIcon buildAppIcon()
 
         const int inset = qRound(size * 0.2);
         const QPixmap glyph = Icons::render(
-            Icons::Id::Cairn, size - inset * 2, Theme::accent(), 1.0);
+            Icons::Id::Cairn, size - inset * 2, Theme::brand(), 1.0);
         p.drawPixmap(inset, inset, glyph);
         p.end();
 

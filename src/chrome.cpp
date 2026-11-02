@@ -219,7 +219,7 @@ TitleBar::TitleBar(QWidget *parent)
     auto *mark = new QLabel(this);
     mark->setObjectName(QStringLiteral("appMark"));
     mark->setFixedSize(18, 18);
-    mark->setPixmap(Icons::render(Icons::Id::Cairn, 17, Theme::accent(),
+    mark->setPixmap(Icons::render(Icons::Id::Cairn, 17, Theme::brand(),
                                   devicePixelRatioF()));
     layout->addWidget(mark);
 

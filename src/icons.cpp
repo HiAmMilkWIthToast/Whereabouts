@@ -23,6 +23,14 @@ const char *svgFor(Id id)
                       "<path d=\"M7.9 12.1h8.2\"/>"
                       "<path d=\"M9.4 9.1h5.2\"/>"
                       "<ellipse cx=\"12\" cy=\"6.6\" rx=\"2.4\" ry=\"1.6\"/>");
+    case Id::CairnCompact:
+        // The same stones with fewer of them and more air between the ones that
+        // are left. At 16px the full mark's 3px gaps fall inside a single pixel
+        // and the stones merge into one blob; three stones with wider spacing
+        // still read as a stack.
+        return STROKE("<ellipse cx=\"12\" cy=\"18.6\" rx=\"7\" ry=\"2.8\"/>"
+                      "<path d=\"M7 13.4h10\"/>"
+                      "<path d=\"M9.2 8.2h5.6\"/>");
     case Id::Layout:
         return STROKE("<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2.5\"/>"
                       "<path d=\"M3 9h18\"/><path d=\"M9 21V9\"/>");

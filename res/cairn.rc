@@ -1,0 +1,37 @@
+#include <windows.h>
+
+// Windows resources. The icon is what Explorer, the taskbar and Alt-Tab show
+// before the app has drawn anything of its own.
+//
+// 1 ICON is the lowest icon id; Qt and Windows both fall back to it when a
+// window has no icon set, which covers the moment before main() runs.
+1 ICON "cairn.ico"
+
+// Without this, an app with no version information looks unsigned to Windows and
+// to anything that inspects a binary.
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,0,0,0
+ PRODUCTVERSION 1,0,0,0
+ FILEFLAGSMASK 0x3fL
+ FILEFLAGS 0x0L
+ FILEOS 0x40004L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "FileDescription", "Cairn"
+            VALUE "FileVersion", "1.0.0.0"
+            VALUE "InternalName", "cairn"
+            VALUE "OriginalFilename", "cairn.exe"
+            VALUE "ProductName", "Cairn"
+            VALUE "ProductVersion", "1.0.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

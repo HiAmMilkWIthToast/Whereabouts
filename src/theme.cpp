@@ -33,6 +33,23 @@ QColor accent()
     return accentCache();
 }
 
+QColor brand()
+{
+    return QColor(QStringLiteral("#d0a86a"));
+}
+
+QString brandDimName()
+{
+    // Toward the panel colour, so the border stays a colour rather than turning
+    // into a transparent grey on a near-black surface.
+    return blend(brand(), QColor(QStringLiteral("#121016")), 0.68).name();
+}
+
+QString brandBrightName()
+{
+    return blend(brand(), QColor(QStringLiteral("#ffffff")), 0.18).name();
+}
+
 void setAccent(const QColor &color)
 {
     if (!color.isValid())

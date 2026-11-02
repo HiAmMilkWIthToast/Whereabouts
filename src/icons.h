@@ -15,6 +15,7 @@ namespace Icons {
 
 enum class Id {
     Cairn,      // brand mark: stacked stones
+    CairnCompact, // the mark with fewer stones, for 16-24px where they merge
     Layout,     // snapshot / frame
     Folder,
     File,

@@ -54,7 +54,7 @@ OnboardingDialog::OnboardingDialog(const QString &suggestedPath, bool firstRun,
 
     auto *mark = new QLabel(this);
     mark->setFixedSize(30, 30);
-    mark->setPixmap(Icons::render(Icons::Id::Cairn, 28, Theme::accent(),
+    mark->setPixmap(Icons::render(Icons::Id::Cairn, 28, Theme::brand(),
                                   devicePixelRatioF()));
     head->addWidget(mark);
 
