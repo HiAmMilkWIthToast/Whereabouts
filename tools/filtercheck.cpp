@@ -1,5 +1,6 @@
 // Regression checks for the kind-filter chips. Development helper only.
 #include <QApplication>
+#include <QHash>
 #include <QPushButton>
 #include <QTextStream>
 #include <QVBoxLayout>
@@ -113,6 +114,87 @@ int main(int argc, char *argv[])
     check(afterOne.isEmpty(),
           QStringLiteral("a single-kind session shows no chip row (got %1)")
               .arg(afterOne.size()));
+
+    // The label has to sit in the middle of the pill, measured on the rendered
+    // pixels rather than on the arithmetic: advance widths give a digit far more
+    // room than its ink, which is how the text ended up visibly left of centre.
+    {
+        MainWindow shot;
+        Session two;
+        two.id = QStringLiteral("centretest");
+        two.name = QStringLiteral("Centre");
+        two.rootPath = QStringLiteral("C:/tmp");
+        two.capturedAt = QDateTime::currentDateTime();
+        two.cellSize = QSize(75, 98);
+        two.entries << entry(QStringLiteral("a.txt"), Kind::Document, QStringLiteral("txt"));
+        two.entries << entry(QStringLiteral("b.zip"), Kind::Archive, QStringLiteral("zip"));
+        two.entries << entry(QStringLiteral("c.exe"), Kind::Executable, QStringLiteral("exe"));
+        shot.presentSession(two);
+
+        const QList<FilterChip *> drawn =
+            shot.findChildren<FilterChip *>(QStringLiteral("filterChip"));
+        check(!drawn.isEmpty(), QStringLiteral("chips exist to measure"));
+        for (FilterChip *chip : drawn) {
+            const QImage img = chip->grab().toImage();
+            // The pill's fill is taken as the most common colour in the middle
+            // of the widget rather than sampled from one pixel: a single sample
+            // can land on a glyph and invert the whole measurement.
+            const int inset = 5;
+            QHash<QRgb, int> histogram;
+            for (int y = inset; y < img.height() - inset; ++y)
+                for (int x = inset; x < img.width() - inset; ++x)
+                    ++histogram[img.pixel(x, y) & 0x00ffffff];
+
+            QRgb fillRgb = 0;
+            int best = -1;
+            for (auto it = histogram.constBegin(); it != histogram.constEnd(); ++it) {
+                if (it.value() > best) {
+                    best = it.value();
+                    fillRgb = it.key();
+                }
+            }
+            const QColor fill(fillRgb);
+
+            int minX = img.width();
+            int maxX = -1;
+            for (int y = inset; y < img.height() - inset; ++y) {
+                for (int x = inset; x < img.width() - inset; ++x) {
+                    const QColor c = img.pixelColor(x, y);
+                    // A small tolerance still catches antialiased edge pixels,
+                    // which a strict threshold drops and thereby reports the
+                    // text as narrower than it is.
+                    const int d = qAbs(c.red() - fill.red())
+                                + qAbs(c.green() - fill.green())
+                                + qAbs(c.blue() - fill.blue());
+                    if (d > 8) {
+                        minX = qMin(minX, x);
+                        maxX = qMax(maxX, x);
+                    }
+                }
+            }
+            if (maxX < 0) {
+                check(false, QStringLiteral("chip \"%1\" drew text").arg(chip->label()));
+                continue;
+            }
+
+            // What is being balanced is the gap between the text and the inside
+            // of the pill, so the border has to be subtracted from both sides.
+            const int left = minX - inset;
+            const int right = (img.width() - 1 - inset) - maxX;
+            check(left > 1 && right > 1,
+                  QStringLiteral("chip \"%1\" text sits inside the pill (left %2, right %3)")
+                      .arg(chip->label())
+                      .arg(left)
+                      .arg(right));
+            // An odd number of pixels cannot be split evenly, so one pixel is
+            // the smallest difference any correct layout can achieve.
+            check(qAbs(left - right) <= 1,
+                  QStringLiteral("chip \"%1\" text is centred (left %2, right %3)")
+                      .arg(chip->label())
+                      .arg(left)
+                      .arg(right));
+        }
+    }
 
     out << "\n" << (failures == 0 ? "FILTER PASSED\n" : "FILTER FAILED\n");
     out.flush();

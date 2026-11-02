@@ -80,6 +80,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/e2e.cpp")
         movecheck:tools/movecheck.cpp        # moving/renaming while open
         deskcheck:tools/deskcheck.cpp        # desktop icon-position polling
         debugcheck:tools/debugcheck.cpp      # bugs found in the debug pass
+        headershot:tools/headershot.cpp      # renders the header for inspection
     )
     foreach(entry IN LISTS CAIRN_TOOLS)
         string(REPLACE ":" ";" parts "${entry}")

@@ -35,15 +35,25 @@ protected:
 
 private:
     void layoutText() const;
+    // Width the drawn run actually occupies, measured from ink. Both the paint
+    // code and the inset accessors use this, so they cannot disagree.
+    int contentWidth() const;
 
     QString m_label;
     int m_count = 0;
     QColor m_countColor;
 
-    // Measured during paint and reused by sizeHint, so the two can never
-    // disagree about how wide the chip should be.
-    mutable int m_labelWidth = -1;
-    mutable int m_countWidth = -1;
+    // Advance widths, which set the chip's size and the distance between the
+    // two runs. They are stable, so sizeHint can rely on them.
+    mutable int m_labelAdvance = 0;
+    mutable int m_countAdvance = 0;
+    mutable int m_countOriginX = 0;
+
+    // The painted extent of the whole run, measured by actually rasterising it.
+    // Placing the text by predicting where ink will land was the source of the
+    // off-centre complaint; measuring it removes the guess.
+    mutable int m_runLeft = 0;
+    mutable int m_runWidth = 0;
     static constexpr int kGap = 5;      // between label and count
     static constexpr int kPadX = 9;     // left and right, deliberately equal
 };

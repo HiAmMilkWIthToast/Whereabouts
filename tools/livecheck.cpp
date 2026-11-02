@@ -69,8 +69,12 @@ int main(int argc, char *argv[])
               QStringLiteral("label is just the kind name (%1)").arg(chip.label()));
         check(chip.count() == 1,
               QStringLiteral("count is carried separately (%1)").arg(chip.count()));
-        check(chip.leftInset() == chip.rightInset(),
-              QStringLiteral("padding is symmetric (L=%1 R=%2)")
+        // An odd leftover cannot be split evenly across two sides, so a single
+        // pixel is the smallest gap any correct layout can leave. Demanding
+        // exact equality only held while the content width happened to be even.
+        const int gap = qAbs(chip.leftInset() - chip.rightInset());
+        check(gap <= 1,
+              QStringLiteral("padding is symmetric to within a pixel (L=%1 R=%2)")
                   .arg(chip.leftInset())
                   .arg(chip.rightInset()));
         check(chip.width() > 0 && chip.height() > 0,

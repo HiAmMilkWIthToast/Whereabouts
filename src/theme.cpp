@@ -227,6 +227,44 @@ QLineEdit:disabled {
     color: #555b64;
 }
 
+/* The sort control is a QComboBox that shares the "field" name with the text
+   inputs. Without a rule of its own it falls back to the platform style, which
+   is a light box on a dark page, so it has to be styled explicitly and not
+   merely inherited from QLineEdit#field. */
+QComboBox#field {
+    background: #0e1013;
+    border: 1px solid #262b32;
+    border-radius: 6px;
+    color: #e4e7ec;
+    font-size: 11px;
+    padding: 4px 8px;
+}
+QComboBox#field:hover {
+    border-color: #343a43;
+}
+QComboBox#field:on,
+QComboBox#field:focus {
+    border-color: %ACCENT%;
+}
+/* The drop-down sub-control is deliberately left unstyled. Styling ::drop-down
+   or ::down-arrow makes Qt take over that sub-control and paint only what the
+   rule describes, which replaced the arrow with a plain square and then with
+   nothing at all. Leaving both alone keeps the native arrow. */
+/* No ::down-arrow rule: Qt cannot draw the CSS zero-size-border triangle, and
+   styling the sub-control turns it into a filled square. Leaving it alone lets
+   the Fusion style paint its own arrow, which already follows the text colour. */
+QComboBox#field QAbstractItemView {
+    background: #14171b;
+    border: 1px solid #282d34;
+    border-radius: 6px;
+    color: #c9ccd2;
+    font-size: 11px;
+    padding: 4px;
+    outline: none;
+    selection-background-color: %ACCENT_DIM%;
+    selection-color: %ACCENT%;
+}
+
 /* ---------- Buttons ---------- */
 QPushButton#ghost {
     background: transparent;
