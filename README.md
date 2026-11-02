@@ -48,6 +48,14 @@ snapshots you have taken, and any of them can be opened in its own window:
 Drag a `.session` file onto the executable, or pass it as the first argument.
 That is the whole sharing story: send someone the small file.
 
+Sessions are kept under your application data folder, not beside the executable:
+
+    %APPDATA%\Cairn\Cairn\sessions
+
+The search box above the list filters by name as you type and suggests matching
+sessions; `Ctrl+F` puts the cursor in it. In a viewer it searches the items in
+that session instead.
+
 ## Keys
 
 | Key | Action |
@@ -55,7 +63,7 @@ That is the whole sharing story: send someone the small file.
 | `Ctrl+N` | New snapshot (library) |
 | `Ctrl+O` | Open a session by its handle (library) |
 | `Ctrl+F` | Focus the item search |
-| `Ctrl+0` | Fit the map to the window (viewer) |
+| `Ctrl+0` or `Ctrl+=` | Fit the map to the window (viewer) |
 | Arrow keys | Move the selection between items, wrapping at the edges |
 | `Enter` | Activate the selected item |
 | `Esc` | Clear the selection, or go back to the session list |
@@ -97,7 +105,6 @@ That writes `res\cairn.ico` (seven sizes, 16 through 256) and
 `res\cairn-256.png`. Below 32px the icon uses fewer stones, because the full
 mark's gaps fall inside a single pixel and the stack merges into one blob.
 
-
 Or with CMake directly:
 
     cmake -S . -B build -DCMAKE_PREFIX_PATH=C:/Qt/6.12.0/mingw_64
@@ -129,8 +136,10 @@ unreadable. Order and adjacency survive, absolute distance does not — and the
 inspector always shows the exact recorded position of the selected item.
 
 Icons are only generated for a handful of kinds; the rest fall back to a generic
-document glyph. Sizes shown for folders are the total of the files directly
-inside, not a recursive sum, so a snapshot stays fast on a large tree.
+document glyph. A folder's size is the total of everything beneath it, not just
+the files sitting directly inside -- but the walk stops after 4000 files, so a
+snapshot of a deep tree is still quick. On a folder that large the number is a
+lower bound, not an exact total.
 
 ## Licence
 
