@@ -37,7 +37,7 @@ Session sampleSession()
     Session session;
     session.id = QStringLiteral("desktop-1k4f2a");
     session.name = QStringLiteral("Desktop");
-    session.rootPath = QStringLiteral("C:/Users/Kille/OneDrive/Desktop");
+    session.rootPath = QStringLiteral("C:/Users/example/OneDrive/Desktop");
     session.capturedAt = QDateTime::currentDateTime();
     session.screen = QSize(2560, 1440);
     session.cellSize = QSize(75, 98);
