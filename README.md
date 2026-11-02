@@ -131,3 +131,7 @@ inspector always shows the exact recorded position of the selected item.
 Icons are only generated for a handful of kinds; the rest fall back to a generic
 document glyph. Sizes shown for folders are the total of the files directly
 inside, not a recursive sum, so a snapshot stays fast on a large tree.
+
+## Licence
+
+MIT. See [LICENSE](LICENSE) — use it, change it, ship it.
