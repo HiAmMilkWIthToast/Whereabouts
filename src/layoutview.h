@@ -29,6 +29,7 @@ public:
     explicit LayoutView(QWidget *parent = nullptr);
 
     void setSession(const Session &session);
+    void setSession(const Session &session, bool resetView);
 
     void setMode(Mode mode);
     Mode mode() const { return m_mode; }
@@ -38,7 +39,6 @@ public:
 
     void setSort(Sort sort, bool descending = false);
     Sort sort() const { return m_sort; }
-    bool sortDescending() const { return m_sortDescending; }
 
     QString selectedPath() const { return m_selectedPath; }
     QList<QString> visiblePaths() const;
@@ -87,6 +87,9 @@ public:
     void ensureSelectionVisible();
 
 private:
+    // Drops the selection when a filter or a search hides the selected
+    // item, so the window can fall back to the session summary.
+    void dropSelectionIfHidden();
     struct Tile {
         QString path;
         QRectF rect;            // canvas coordinates

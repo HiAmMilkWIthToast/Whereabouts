@@ -23,6 +23,10 @@ set(CAIRN_SOURCES
     src/sessionstore.h
     src/sessionstore.cpp
     src/entryicon.h
+    src/filterchip.h
+    src/filterchip.cpp
+    src/folderwatch.h
+    src/folderwatch.cpp
     src/layoutview.h
     src/layoutview.cpp
     src/inspector.h
@@ -70,6 +74,12 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/e2e.cpp")
         keycheck:tools/keycheck.cpp          # keyboard navigation
         sortcheck:tools/sortcheck.cpp        # list sorting
         geomcheck:tools/geomcheck.cpp        # window geometry persistence
+        auditcheck:tools/auditcheck.cpp      # bug-fix regressions
+        livecheck:tools/livecheck.cpp        # live folder updates
+        liveshot:tools/liveshot.cpp          # before/after live screenshots
+        movecheck:tools/movecheck.cpp        # moving/renaming while open
+        deskcheck:tools/deskcheck.cpp        # desktop icon-position polling
+        debugcheck:tools/debugcheck.cpp      # bugs found in the debug pass
     )
     foreach(entry IN LISTS CAIRN_TOOLS)
         string(REPLACE ":" ";" parts "${entry}")

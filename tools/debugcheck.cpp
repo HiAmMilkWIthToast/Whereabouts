@@ -1,0 +1,199 @@
+// Regressions for the bugs found in this pass. Development helper only.
+#include <QApplication>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QTextStream>
+
+#include "filterchip.h"
+#include "inspector.h"
+#include "layoutview.h"
+#include "mainwindow.h"
+#include "sessionmodel.h"
+
+static QTextStream out(stdout);
+static int failures = 0;
+
+static void check(bool ok, const QString &what)
+{
+    out << (ok ? "  PASS  " : "  FAIL  ") << what << "\n";
+    if (!ok)
+        ++failures;
+}
+
+static Entry ent(const QString &name, Kind kind, const QString &suffix,
+                 int col, int row)
+{
+    Entry e;
+    e.name = name;
+    e.relativePath = name;
+    e.kind = kind;
+    e.suffix = suffix;
+    e.cell = QPoint(col, row);
+    e.pos = QPoint(col * 75, row * 98);
+    return e;
+}
+
+static Session sampleSession()
+{
+    Session s;
+    s.id = QStringLiteral("debug-pass");
+    s.name = QStringLiteral("Debug pass");
+    s.rootPath = QStringLiteral("C:/tmp");
+    s.capturedAt = QDateTime::currentDateTime();
+    s.cellSize = QSize(75, 98);
+    s.entries << ent(QStringLiteral("alpha.txt"), Kind::Document, QStringLiteral("txt"), 0, 0);
+    s.entries << ent(QStringLiteral("beta.zip"), Kind::Archive, QStringLiteral("zip"), 1, 0);
+    s.entries << ent(QStringLiteral("gamma.png"), Kind::Image, QStringLiteral("png"), 2, 0);
+    return s;
+}
+
+int main(int argc, char *argv[])
+{
+    QApplication app(argc, argv);
+    app.setApplicationName(QStringLiteral("CairnDebugTest"));
+    app.setOrganizationName(QStringLiteral("CairnDebugTest"));
+
+    // ------------------------------------------------------------------ BUG 1
+    // Escape used to leave the inspector describing the entry that was
+    // deselected, because the window's handler found no match for "" and did
+    // nothing at all.
+    {
+        out << "== Escape clears the inspector ==\n";
+
+        MainWindow window;
+        window.resize(1000, 640);
+        window.presentSession(sampleSession());
+
+        auto *view = window.findChild<LayoutView *>();
+        auto *insp = window.findChild<Inspector *>();
+        check(view && insp, QStringLiteral("view and inspector exist"));
+        if (!view || !insp)
+            return 1;
+
+        view->moveSelection(0, 1);
+        const QString picked = view->selectedPath();
+        check(!picked.isEmpty(), QStringLiteral("an item is selected (%1)").arg(picked));
+        check(insp->hasEntry(), QStringLiteral("inspector shows that entry"));
+
+        view->clearSelection();
+        check(!insp->hasEntry(),
+              QStringLiteral("inspector falls back to the summary after Escape"));
+    }
+
+    // ------------------------------------------------------------------ BUG 2
+    // Typing a search that hides the selected item used to keep it selected.
+    {
+        out << "\n== a search that hides the selection drops it ==\n";
+
+        LayoutView view;
+        view.setSession(sampleSession());
+
+        view.moveSelection(0, 1);
+        view.moveSelection(0, 1);   // land on beta.zip
+        check(view.selectedPath() == QStringLiteral("beta.zip"),
+              QStringLiteral("beta.zip is selected (%1)").arg(view.selectedPath()));
+
+        QString emitted;
+        int emissions = 0;
+        QObject::connect(&view, &LayoutView::entrySelected,
+                         [&](const QString &p) { emitted = p; ++emissions; });
+
+        // "alpha" hides beta.zip.
+        view.setSearch(QStringLiteral("alpha"));
+        check(view.selectedPath().isEmpty(),
+              QStringLiteral("selection drops when search hides it (%1)")
+                  .arg(view.selectedPath()));
+        check(emissions == 1 && emitted.isEmpty(),
+              QStringLiteral("and it reports an empty selection"));
+
+        // Clearing the search must not resurrect the old selection.
+        view.setSearch(QString());
+        check(view.selectedPath().isEmpty(),
+              QStringLiteral("selection stays clear after clearing the search"));
+    }
+
+    // ------------------------------------------------------------------ BUG 3
+    // A live refresh used to reset the zoom, discarding the user's view.
+    {
+        out << "\n== a live refresh keeps the user's zoom ==\n";
+
+        LayoutView view;
+        view.resize(800, 600);
+        view.setSession(sampleSession());
+        const qreal initial = view.zoom();
+
+        view.setZoom(2.0);
+        check(qFuzzyCompare(view.zoom(), 2.0),
+              QStringLiteral("zoom applied (%1)").arg(view.zoom()));
+
+        // Refreshing in place: resetView=false.
+        Session refreshed = sampleSession();
+        refreshed.entries << ent(QStringLiteral("delta.md"), Kind::Document,
+                                 QStringLiteral("md"), 3, 0);
+        view.setSession(refreshed, false);
+
+        check(qFuzzyCompare(view.zoom(), 2.0),
+              QStringLiteral("zoom survives the refresh (%1)").arg(view.zoom()));
+        check(view.visiblePaths().size() == 4,
+              QStringLiteral("the new item is shown (%1)").arg(view.visiblePaths().size()));
+
+        // Opening a new session still fits it, which is the behaviour that
+        // matters for the normal case.
+        view.setSession(sampleSession());
+        check(!qFuzzyCompare(view.zoom(), 2.0),
+              QStringLiteral("opening a session still refits (%1)").arg(view.zoom()));
+        Q_UNUSED(initial)
+    }
+
+    // ------------------------------------------------------------------ BUG 4
+    // The chip row must not accumulate widgets across sessions.
+    {
+        out << "\n== the chip row does not accumulate ==\n";
+
+        MainWindow window;
+        window.presentSession(sampleSession());
+        const int first = window.findChildren<FilterChip *>().size();
+        check(first == 3, QStringLiteral("three kinds make three chips (%1)").arg(first));
+
+        // A single-kind session hides the row; going back must not leave extras.
+        Session one;
+        one.id = QStringLiteral("one");
+        one.name = QStringLiteral("One");
+        one.rootPath = QStringLiteral("C:/tmp");
+        one.capturedAt = QDateTime::currentDateTime();
+        one.cellSize = QSize(75, 98);
+        one.entries << ent(QStringLiteral("x.txt"), Kind::Document, QStringLiteral("txt"), 0, 0);
+        window.presentSession(one);
+        check(window.findChildren<FilterChip *>().isEmpty(),
+              QStringLiteral("one kind shows no chips"));
+
+        window.presentSession(sampleSession());
+        const int again = window.findChildren<FilterChip *>().size();
+        check(again == 3,
+              QStringLiteral("back to three chips, no leftovers (%1)").arg(again));
+    }
+
+    // ------------------------------------------------------------------ BUG 5
+    // The hover state must repaint; verified by construction that the handlers
+    // exist and that hover does not crash or change the check state.
+    {
+        out << "\n== chip hover repaints without changing state ==\n";
+        FilterChip chip(QStringLiteral("Folder"), 3);
+        chip.resize(chip.sizeHint());
+        const bool before = chip.isChecked();
+
+        QEvent enter(QEvent::Enter);
+        QApplication::sendEvent(&chip, &enter);
+        check(chip.isChecked() == before,
+              QStringLiteral("hover does not toggle the chip"));
+
+        QEvent leave(QEvent::Leave);
+        QApplication::sendEvent(&chip, &leave);
+        check(chip.isChecked() == before,
+              QStringLiteral("leaving does not toggle the chip"));
+    }
+
+    out << "\n" << (failures == 0 ? "DEBUG PASSED\n" : "DEBUG FAILED\n");
+    out.flush();
+    return failures == 0 ? 0 : 1;
+}

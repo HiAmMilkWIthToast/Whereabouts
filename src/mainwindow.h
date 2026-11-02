@@ -15,6 +15,7 @@ class QPushButton;
 class QComboBox;
 class LayoutView;
 class Inspector;
+class FolderWatcher;
 
 // The library window: every .session file the app has made, a card list of
 // them, and an embedded view of the selected one.
@@ -67,6 +68,12 @@ private:
     void rebuildKindFilter();
     void applyKindFilter();
 
+    // Re-scans the folder on screen after the watcher reports a change, and
+    // redraws in place. The .session file on disk is deliberately not touched:
+    // live updates follow the folder, saving stays an explicit action.
+    void onFolderChanged();
+    void updateLiveState();
+
     QStackedWidget *m_pages = nullptr;
     Sidebar *m_sidebar = nullptr;
     StatusBar *m_status = nullptr;
@@ -91,6 +98,11 @@ private:
     QPushButton *m_sortDir = nullptr;
     // Only kinds switched off are recorded; an absent kind is on.
     QHash<int, bool> m_kindEnabled;
+
+    FolderWatcher *m_watcher = nullptr;
+    // Set while a live re-scan is in flight, so a change raised by our own
+    // redraw cannot feed back into another scan.
+    bool m_applyingLive = false;
 
     Session m_current;
     int m_libraryNav = 0;   // sidebar ids, assigned in the constructor

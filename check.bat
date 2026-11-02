@@ -10,6 +10,11 @@ rem   check.bat filter     kind-filter chips
 rem   check.bat keys       keyboard navigation
 rem   check.bat sort       list sorting
 rem   check.bat geom       window geometry persistence
+rem   check.bat audit      bug-fix regressions
+rem   check.bat live       live folder updates
+rem   check.bat move       moving and renaming while open
+rem   check.bat desk       desktop icon-position polling
+rem   check.bat debug      bugs found in the debug pass
 setlocal
 
 set "QT_DIR=C:/Qt/6.12.0/mingw_64"
@@ -42,6 +47,11 @@ if "%ONLY%"=="" call :run filtercheck
 if "%ONLY%"=="" call :run keycheck
 if "%ONLY%"=="" call :run sortcheck
 if "%ONLY%"=="" call :run geomcheck
+if "%ONLY%"=="" call :run auditcheck
+if "%ONLY%"=="" call :run livecheck
+if "%ONLY%"=="" call :run movecheck
+if "%ONLY%"=="" call :run deskcheck
+if "%ONLY%"=="" call :run debugcheck
 if /i "%ONLY%"=="e2e"     call :run e2e
 if /i "%ONLY%"=="windows" call :run windowprobe
 if /i "%ONLY%"=="capture" call :run capturecheck
@@ -50,6 +60,11 @@ if /i "%ONLY%"=="filter" call :run filtercheck
 if /i "%ONLY%"=="keys" call :run keycheck
 if /i "%ONLY%"=="sort" call :run sortcheck
 if /i "%ONLY%"=="geom" call :run geomcheck
+if /i "%ONLY%"=="audit" call :run auditcheck
+if /i "%ONLY%"=="live"  call :run livecheck
+if /i "%ONLY%"=="move"  call :run movecheck
+if /i "%ONLY%"=="desk"  call :run deskcheck
+if /i "%ONLY%"=="debug" call :run debugcheck
 
 if %FAILED% neq 0 (
   echo.

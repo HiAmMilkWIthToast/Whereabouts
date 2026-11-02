@@ -351,24 +351,9 @@ QLabel#chipMissing {
     padding: 1px 6px;
 }
 
-/* ---------- Filter chips ---------- */
-QPushButton#filterChip {
-    background: #14171b;
-    border: 1px solid #24292f;
-    border-radius: 10px;
-    color: #828a94;
-    font-size: 10px;
-    padding: 2px 9px;
-}
-QPushButton#filterChip:hover {
-    border-color: #333a43;
-    color: #c9ccd2;
-}
-QPushButton#filterChip:checked {
-    background: %ACCENT_DIM%;
-    border-color: %ACCENT%;
-    color: %ACCENT%;
-}
+/* Filter chips paint themselves (FilterChip), so they are styled in C++ rather
+   than here. Any QSS rule for them would be overridden by that paint code and
+   only mislead the next reader. */
 
 /* ---------- Lists ---------- */
 QListWidget#sessionList {

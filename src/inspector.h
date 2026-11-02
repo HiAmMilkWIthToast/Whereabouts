@@ -21,6 +21,10 @@ public:
     void setSession(const Session &session);
     void setEntry(const Entry *entry);
 
+    // True when the panel describes a single entry rather than the
+    // session summary. Used by tests to assert a selection was cleared.
+    bool hasEntry() const { return m_hasEntry; }
+
 signals:
     void revealRequested(const QString &name);
     void copyPathRequested(const QString &text);

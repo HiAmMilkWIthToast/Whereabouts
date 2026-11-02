@@ -1,5 +1,7 @@
 #include "mainwindow.h"
 #include "entryicon.h"
+#include "filterchip.h"
+#include "folderwatch.h"
 #include "inspector.h"
 #include "layoutview.h"
 #include "onboarding.h"
@@ -165,14 +167,19 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_sidebar, &Sidebar::pageRequested, this, [this](int id) {
         if (id == m_newNav) {
             newSnapshot();
-            m_sidebar->setActive(m_current.id.isEmpty() ? m_libraryNav : m_openNav);
         } else if (id == m_openNav) {
             openSessionById(QString());
-            m_sidebar->setActive(m_current.id.isEmpty() ? m_libraryNav : m_openNav);
         } else {
             setPage(LibraryPage);
         }
     });
+
+    // Live updates: the open snapshot follows its folder while the window is
+    // showing it. Nothing is written to disk, so the saved session stays a
+    // point-in-time record until the user captures again.
+    m_watcher = new FolderWatcher(this);
+    connect(m_watcher, &FolderWatcher::folderChanged, this,
+            &MainWindow::onFolderChanged);
 
     m_status->setState(QStringLiteral("ready"), true);
     m_status->setHint(QStringLiteral("Ctrl+N new  ·  Ctrl+O open a .session file"));
@@ -311,7 +318,9 @@ QWidget *MainWindow::buildDetailPage()
     m_kindBar = new QWidget(page);
     m_kindRow = new QHBoxLayout(m_kindBar);
     m_kindRow->setContentsMargins(0, 8, 0, 0);
-    m_kindRow->setSpacing(5);
+    // One spacing value for the whole row, so the gaps between chips are
+    // uniform instead of depending on each chip's own margins.
+    m_kindRow->setSpacing(6);
     root->addWidget(m_kindBar);
 
     // ---- sort control, only relevant to the list
@@ -411,12 +420,20 @@ QWidget *MainWindow::buildDetailPage()
     });
 
     connect(m_layout, &LayoutView::entrySelected, this, [this](const QString &path) {
+        // An empty path means "nothing selected" (Escape, or a filter hiding the
+        // selected item). The panel has to fall back to the session summary
+        // instead of keeping the entry that just vanished.
+        if (path.isEmpty()) {
+            m_inspector->setEntry(nullptr);
+            return;
+        }
         for (const Entry &entry : m_current.entries) {
             if (entry.relativePath == path) {
                 m_inspector->setEntry(&entry);
-                break;
+                return;
             }
         }
+        m_inspector->setEntry(nullptr);
     });
     connect(m_layout, &LayoutView::entryActivated, this, [this](const QString &path) {
         revealInShell(m_current.rootPath + QLatin1Char('/') + path);
@@ -428,8 +445,8 @@ QWidget *MainWindow::buildDetailPage()
     connect(m_inspector, &Inspector::copyPathRequested, this, [](const QString &text) {
         QApplication::clipboard()->setText(text);
     });
-    connect(m_inspector, &Inspector::openFolderRequested, this, [](const QString &root) {
-        QDesktopServices::openUrl(QUrl::fromLocalFile(root));
+    connect(m_inspector, &Inspector::openFolderRequested, this, [](const QString &folder) {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(folder));
     });
 
     return page;
@@ -522,6 +539,92 @@ void MainWindow::applySession(const Session &session){
                                              : QStringLiteral("grid layout"),
                        session.livePositions);
     m_sidebar->setActive(m_openNav);
+
+    // Follow this folder from now on. An empty session (the library page) stops
+    // watching, so a stale folder cannot keep waking the app.
+    if (m_watcher)
+        m_watcher->watch(session.rootPath);
+}
+
+void MainWindow::onFolderChanged()
+{
+    // A missing root is the normal result of the folder being deleted or
+    // renamed away. Re-scanning it would produce an empty session and quietly
+    // erase what is on screen, so the view is left alone and the footer says
+    // what happened instead.
+    if (m_current.id.isEmpty())
+        return;
+
+    if (!QFileInfo(m_current.rootPath).isDir()) {
+        updateLiveState();
+        return;
+    }
+
+    // Guard against a re-entrant scan: rebuilding the view touches widgets, and
+    // a change raised while that happens must not start another scan.
+    if (m_applyingLive)
+        return;
+    m_applyingLive = true;
+
+    Session updated = SessionStore::capture(m_current.rootPath);
+
+    // Keep the identity of the snapshot being viewed. A fresh capture makes a
+    // new id and timestamp, but this is the same session following its folder,
+    // not a new one, so its handle and captured time must not silently change.
+    updated.id = m_current.id;
+    updated.name = m_current.name;
+    updated.capturedAt = m_current.capturedAt;
+
+    m_current = updated;
+
+    m_detailMeta->setText(
+        QStringLiteral("%1  ·  %2  ·  %3")
+            .arg(updated.id,
+                 updated.summary(),
+                 updated.capturedAt.toString(QStringLiteral("MMM d, yyyy  HH:mm"))));
+
+    // A change elsewhere in the folder must not clear the inspector under the
+    // user, so the selection is remembered and restored. setSession() has to run
+    // before setEntry(), because it drops back to the summary panel and would
+    // otherwise erase the entry chosen just above it.
+    const QString keep = m_layout->selectedPath();
+    // resetView=false: this is the same folder being refreshed, not a session
+    // being opened, so the user's zoom and pan must survive.
+    m_layout->setSession(updated, false);
+    m_inspector->setSession(updated);
+
+    if (!keep.isEmpty()) {
+        for (const Entry &entry : m_current.entries) {
+            if (entry.relativePath == keep) {
+                m_inspector->setEntry(&entry);
+                break;
+            }
+        }
+    }
+
+    rebuildKindFilter();
+    updateLiveState();
+
+    m_applyingLive = false;
+}
+
+void MainWindow::updateLiveState()
+{
+    if (m_current.id.isEmpty())
+        return;
+
+    if (!QFileInfo(m_current.rootPath).isDir()) {
+        m_status->setState(QStringLiteral("folder is gone"), true);
+        m_status->setSession(QStringLiteral("%1  ·  %2").arg(m_current.name, m_current.id));
+        return;
+    }
+
+    // The layout no longer matches what was saved, which is worth saying: the
+    // map is live, but the .session file is still the old capture.
+    m_status->setState(m_current.livePositions ? QStringLiteral("live layout")
+                                               : QStringLiteral("grid layout"),
+                       m_current.livePositions);
+    m_status->setSession(QStringLiteral("%1  ·  %2").arg(m_current.name, m_current.id));
 }
 
 void MainWindow::rebuildKindFilter()
@@ -529,7 +632,9 @@ void MainWindow::rebuildKindFilter()
     if (!m_kindRow)
         return;
 
-    // Clear the previous chips without leaking them.
+    // Clear first, before any early return below: a previous run left chips and
+    // a trailing stretch in this row, and returning without removing them would
+    // carry that stale layout into the next session.
     while (QLayoutItem *item = m_kindRow->takeAt(0)) {
         if (QWidget *w = item->widget()) {
             w->hide();
@@ -561,24 +666,23 @@ void MainWindow::rebuildKindFilter()
     }
     m_kindBar->setVisible(true);
 
-    auto addChip = [this](const QString &text, int kindValue) {
-        auto *chip = new QPushButton(text, m_kindBar);
-        chip->setObjectName(QStringLiteral("filterChip"));
-        chip->setCursor(Qt::PointingHandCursor);
-        chip->setCheckable(true);
-        chip->setChecked(true);
-        chip->setFocusPolicy(Qt::NoFocus);
+    auto addChip = [this](Kind kind) {
+        // The name and the count are separate runs inside the chip, so the
+        // count can read as secondary and the padding stays symmetric.
+        auto *chip = new FilterChip(kindName(kind), m_current.countOf(kind), m_kindBar);
         m_kindRow->addWidget(chip);
         // Only switched-off kinds are recorded; an absent kind counts as on.
-        connect(chip, &QPushButton::toggled, this, [this, kindValue](bool on) {
-            m_kindEnabled.insert(kindValue, on);
+        connect(chip, &FilterChip::toggled, this, [this, kind](bool on) {
+            m_kindEnabled.insert(int(kind), on);
             applyKindFilter();
         });
     };
 
     for (Kind kind : present)
-        addChip(QStringLiteral("%1 %2").arg(kindName(kind)).arg(m_current.countOf(kind)),
-                int(kind));
+        addChip(kind);
+
+    // Keeps the chips packed to the left. Without it the row spreads them out
+    // across the full width, with gaps that grow as the window widens.
     m_kindRow->addStretch(1);
 
     applyKindFilter();
@@ -605,6 +709,14 @@ void MainWindow::applyKindFilter()
 
 void MainWindow::openSessionById(const QString &id)
 {
+    // Re-opening the session already on screen is a no-op rather than a reload.
+    // A double-click in the library raises both itemClicked and itemActivated,
+    // and reloading re-read the file and rebuilt the page twice for one gesture.
+    const bool alreadyShowing = !id.isEmpty() && id == m_current.id
+        && m_pages->currentIndex() == DetailPage;
+    if (alreadyShowing)
+        return;
+
     QString wanted = id;
     if (wanted.isEmpty()) {
         bool ok = false;

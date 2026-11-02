@@ -30,11 +30,6 @@ constexpr qreal kIconSize = 20.0;
 constexpr qreal kListRowHeight = 30.0;
 constexpr qreal kMargin = 18.0;
 
-QString humanSuffix(const Entry &entry)
-{
-    return entry.suffix.isEmpty() ? QString() : entry.suffix.toUpper();
-}
-
 } // namespace
 
 LayoutView::LayoutView(QWidget *parent)
@@ -56,12 +51,27 @@ LayoutView::LayoutView(QWidget *parent)
 
 void LayoutView::setSession(const Session &session)
 {
+    setSession(session, true);
+}
+
+// `resetView` is false when the same session is merely being refreshed in
+// place. Opening a session should fit it to the window, but a live update must
+// not: the items are the same arrangement of the same folder, and discarding the
+// user's zoom because one file appeared would be a surprise.
+void LayoutView::setSession(const Session &session, bool resetView)
+{
     m_session = session;
     m_selectedPath.clear();
     m_hoveredPath.clear();
-    m_userZoomed = false;
-    rebuild();
-    fitToView();
+
+    if (resetView) {
+        m_userZoomed = false;
+        rebuild();
+        fitToView();
+    } else {
+        rebuild();
+        updateScrollRanges();
+    }
     emit viewChanged();
 }
 
@@ -82,6 +92,27 @@ void LayoutView::setKindFilter(const QHash<int, bool> &enabledByKind)
 {
     m_kindFilter = enabledByKind;
     rebuild();
+
+    dropSelectionIfHidden();
+}
+
+// A filter or a search change can hide the item that is selected. Leaving it
+// selected would keep the inspector describing something no longer on screen
+// and leave arrow keys with no starting point, so the selection is dropped and
+// the window is told to fall back to the session summary.
+void LayoutView::dropSelectionIfHidden()
+{
+    if (m_selectedPath.isEmpty())
+        return;
+
+    for (const Tile &tile : m_tiles) {
+        if (tile.path == m_selectedPath)
+            return;
+    }
+
+    m_selectedPath.clear();
+    emit entrySelected(QString());
+    emit viewChanged();
 }
 
 void LayoutView::setSearch(const QString &text)
@@ -90,6 +121,7 @@ void LayoutView::setSearch(const QString &text)
         return;
     m_search = text;
     rebuild();
+    dropSelectionIfHidden();
 }
 
 void LayoutView::setSort(Sort sort, bool descending)

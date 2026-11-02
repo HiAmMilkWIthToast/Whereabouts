@@ -4,6 +4,7 @@
 #include <QTextStream>
 #include <QVBoxLayout>
 
+#include "filterchip.h"
 #include "layoutview.h"
 #include "mainwindow.h"
 #include "sessionmodel.h"
@@ -50,17 +51,17 @@ int main(int argc, char *argv[])
     window.presentSession(s);
 
     // Find the chip row and its buttons.
-    const QList<QPushButton *> chips =
-        window.findChildren<QPushButton *>(QStringLiteral("filterChip"));
+    const QList<FilterChip *> chips =
+        window.findChildren<FilterChip *>(QStringLiteral("filterChip"));
     out << "chips found: " << chips.size() << "\n";
-    for (QPushButton *c : chips)
-        out << "    chip: [" << c->text() << "]\n";
+    for (FilterChip *c : chips)
+        out << "    chip: [" << c->label() << " " << c->count() << "]\n";
     check(chips.size() == 3, QStringLiteral("one chip per present kind (3 kinds)"));
     // Order follows the inspector's kind order, so assert on content by name
     // rather than on position: the chips are Archive, Executable, Document here.
     bool documentChipOk = false;
-    for (QPushButton *c : chips) {
-        if (c->text() == QStringLiteral("Document 2"))
+    for (FilterChip *c : chips) {
+        if (c->label() == QStringLiteral("Document") && c->count() == 2)
             documentChipOk = true;
     }
     check(documentChipOk, QStringLiteral("chip shows the kind and its count"));
@@ -75,8 +76,8 @@ int main(int argc, char *argv[])
               .arg(view->visiblePaths().size()));
 
     // Switch off Archives.
-    for (QPushButton *chip : chips) {
-        if (chip->text().startsWith(QStringLiteral("Archive")))
+    for (FilterChip *chip : chips) {
+        if (chip->label() == QStringLiteral("Archive"))
             chip->setChecked(false);
     }
     check(view->visiblePaths().size() == 3,
@@ -84,14 +85,14 @@ int main(int argc, char *argv[])
               .arg(view->visiblePaths().size()));
 
     // Switch off everything.
-    for (QPushButton *chip : chips)
+    for (FilterChip *chip : chips)
         chip->setChecked(false);
     check(view->visiblePaths().isEmpty(),
           QStringLiteral("hiding every kind leaves nothing (%1)")
               .arg(view->visiblePaths().size()));
 
     // Back on.
-    for (QPushButton *chip : chips)
+    for (FilterChip *chip : chips)
         chip->setChecked(true);
     check(view->visiblePaths().size() == 4,
           QStringLiteral("re-enabling every chip restores all items (%1)")
@@ -107,8 +108,8 @@ int main(int argc, char *argv[])
     one.entries << entry(QStringLiteral("x.txt"), Kind::Document, QStringLiteral("txt"));
     window.presentSession(one);
 
-    const QList<QPushButton *> afterOne =
-        window.findChildren<QPushButton *>(QStringLiteral("filterChip"));
+    const QList<FilterChip *> afterOne =
+        window.findChildren<FilterChip *>(QStringLiteral("filterChip"));
     check(afterOne.isEmpty(),
           QStringLiteral("a single-kind session shows no chip row (got %1)")
               .arg(afterOne.size()));
