@@ -3,6 +3,7 @@
 #include "icons.h"
 
 #include <QColor>
+#include <QUrl>
 #include <QWidget>
 
 class QLabel;
@@ -73,6 +74,11 @@ public:
     // Keeps the maximize glyph honest when the window changes state.
     void setMaximized(bool maximized);
 
+    // Points the mark and the name at a web address. Clicking either opens it;
+    // an empty address leaves them inert so a build without one has no dead
+    // affordance.
+    void setBrandLink(const QUrl &url);
+
 signals:
     void minimizeRequested();
     void maximizeRequested();
@@ -83,9 +89,13 @@ protected:
     void mouseDoubleClickEvent(QMouseEvent *event) override;
 
 private:
+    // The mark and the name as one target: pressing either opens the link.
+    class BrandButton;
+
     QLabel *m_subtitle = nullptr;
     QHBoxLayout *m_center = nullptr;
     IconButton *m_maximize = nullptr;
+    BrandButton *m_brand = nullptr;
 };
 
 // The narrow icon rail. A button is added per page and shown as active when its

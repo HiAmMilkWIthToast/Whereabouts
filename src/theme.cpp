@@ -122,14 +122,6 @@ QWidget#titleBar {
     background: #101216;
     border-bottom: 1px solid #1b1e23;
 }
-QLabel#appMark {
-    color: %ACCENT%;
-}
-QLabel#appName {
-    color: #eceef2;
-    font-size: 12px;
-    font-weight: 600;
-}
 QLabel#appTag {
     color: #5c626b;
     font-size: 10px;

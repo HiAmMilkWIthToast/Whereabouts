@@ -95,6 +95,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/e2e.cpp")
         suggestcheck:tools/suggestcheck.cpp  # the search box's snapshot list
         suggestshot:tools/suggestshot.cpp    # renders the search list
         icotool:tools/icotool.cpp            # writes res/cairn.ico
+        brandcheck:tools/brandcheck.cpp      # the clickable mark
         scrollcheck:tools/scrollcheck.cpp    # scrolling, list hit-testing, hover
     )
     foreach(entry IN LISTS CAIRN_TOOLS)
@@ -118,4 +119,8 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/e2e.cpp")
     # suggestcheck asserts the committed icon files exist and are drawn in gold.
     target_compile_definitions(cairn_suggestcheck PRIVATE
         CAIRN_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
+
+    # brandcheck reads the address out of the source, where it is written.
+    target_compile_definitions(cairn_brandcheck PRIVATE
+        CAIRN_SRC_DIR="${CMAKE_CURRENT_SOURCE_DIR}/src")
 endif()

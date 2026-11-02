@@ -16,6 +16,8 @@
 #include <QVBoxLayout>
 #include <QVariantAnimation>
 #include <QWindow>
+#include <QUrl>
+#include <QDesktopServices>
 
 #include <QApplication>
 #include <QScreen>
@@ -32,6 +34,10 @@ namespace {
 // corners at 9px, so the band reaches slightly inward to keep the curve
 // grabbable.
 constexpr int kResizeBorder = 8;
+
+// Where the mark and the name lead. One constant so the window title and the
+// click target cannot disagree.
+constexpr char kProjectUrl[] = "https://github.com/HiAmMilkWIthToast/Whereabouts";
 
 void applyDarkCaption(QWidget *widget)
 {
@@ -203,6 +209,145 @@ void IconButton::paintEvent(QPaintEvent *)
     }
 }
 
+// --------------------------------------------------------------- BrandButton
+
+// The mark and the name, as one clickable target for the project page.
+//
+// It is painted rather than styled because the hover state is animated: the
+// background fades in and the glyph lifts a pixel, which needs a value to
+// interpolate between. QSS cannot animate.
+class TitleBar::BrandButton : public QWidget
+{
+public:
+    BrandButton(QWidget *parent)
+        : QWidget(parent)
+    {
+        setCursor(Qt::PointingHandCursor);
+        setAttribute(Qt::WA_Hover, true);
+        setFocusPolicy(Qt::NoFocus);
+        m_mask = Icons::alphaMask(Icons::Id::Cairn, kMarkSize, devicePixelRatioF());
+
+        m_hoverAnim = new QVariantAnimation(this);
+        m_hoverAnim->setDuration(150);
+        m_hoverAnim->setEasingCurve(QEasingCurve::OutCubic);
+        connect(m_hoverAnim, &QVariantAnimation::valueChanged, this,
+                [this](const QVariant &v) {
+                    m_hover = v.toReal();
+                    update();
+                });
+
+        m_pressAnim = new QVariantAnimation(this);
+        m_pressAnim->setDuration(90);
+        m_pressAnim->setEasingCurve(QEasingCurve::OutCubic);
+        connect(m_pressAnim, &QVariantAnimation::valueChanged, this,
+                [this](const QVariant &v) {
+                    m_press = v.toReal();
+                    update();
+                });
+    }
+
+    void setLink(const QUrl &url)
+    {
+        m_url = url;
+        setCursor(url.isValid() && !url.isEmpty() ? Qt::PointingHandCursor
+                                                  : Qt::ArrowCursor);
+        update();
+    }
+
+    QSize sizeHint() const override
+    {
+        const QFontMetrics fm(font());
+        return QSize(kPadX * 2 + kMarkSize + 7 + fm.horizontalAdvance(kName),
+                     Metrics::kTitleBarHeight);
+    }
+
+protected:
+    void enterEvent(QEnterEvent *event) override
+    {
+        animate(m_hover, 1.0, m_hoverAnim, 150);
+        QWidget::enterEvent(event);
+    }
+
+    void leaveEvent(QEvent *event) override
+    {
+        animate(m_hover, 0.0, m_hoverAnim, 150);
+        QWidget::leaveEvent(event);
+    }
+
+    void mousePressEvent(QMouseEvent *event) override
+    {
+        if (event->button() == Qt::LeftButton)
+            animate(m_press, 1.0, m_pressAnim, 90);
+        QWidget::mousePressEvent(event);
+    }
+
+    void mouseReleaseEvent(QMouseEvent *event) override
+    {
+        animate(m_press, 0.0, m_pressAnim, 90);
+        if (event->button() == Qt::LeftButton && rect().contains(event->position().toPoint())
+            && !m_url.isEmpty()) {
+            QDesktopServices::openUrl(m_url);
+        }
+        QWidget::mouseReleaseEvent(event);
+    }
+
+    void paintEvent(QPaintEvent *) override
+    {
+        QPainter p(this);
+        p.setRenderHint(QPainter::Antialiasing);
+
+        // Hover and press both read as "this is a target", so they add rather
+        // than replace; a press on a hovered button is the brightest state.
+        const qreal lift = m_hover * (1.0 - m_press * 0.5);
+        const QRectF pill = QRectF(rect()).adjusted(2, 4, -2, -4);
+        const int alpha = int(26 * lift);
+        if (alpha > 0) {
+            p.setPen(Qt::NoPen);
+            p.setBrush(QColor(208, 168, 106, alpha));
+            p.drawRoundedRect(pill, 6, 6);
+        }
+
+        // The mark rises a pixel on hover, which is the whole animation: enough
+        // to feel alive, not enough to look like it moved.
+        const int markY = (height() - kMarkSize) / 2 - int(m_hover * 1.0);
+        const QColor markColor = Theme::lerpColor(
+            Theme::brand(), Theme::brand().lighter(135), qMax(m_hover, m_press));
+        p.drawPixmap(kPadX, markY, Icons::tint(m_mask, markColor));
+
+        const int textX = kPadX + kMarkSize + 7;
+        QFont f = font();
+        f.setPixelSize(12);
+        f.setWeight(QFont::DemiBold);
+        p.setFont(f);
+        const QColor nameColor = Theme::lerpColor(
+            QColor(QStringLiteral("#eceef2")), markColor, qMax(m_hover, m_press));
+        p.setPen(nameColor);
+        p.drawText(QRect(textX, 0, width() - textX - kPadX, height()),
+                   Qt::AlignLeft | Qt::AlignVCenter, kName);
+    }
+
+private:
+    static constexpr int kMarkSize = 17;
+    static constexpr int kPadX = 8;
+    static inline const QString kName = QStringLiteral("Cairn");
+
+    void animate(qreal &value, qreal target, QVariantAnimation *animation, int duration)
+    {
+        animation->stop();
+        animation->setStartValue(value);
+        animation->setEndValue(target);
+        animation->setDuration(duration);
+        animation->start();
+    }
+
+    QUrl m_url;
+    QPixmap m_mask;
+    qreal m_hover = 0.0;
+    qreal m_press = 0.0;
+    QVariantAnimation *m_hoverAnim = nullptr;
+    QVariantAnimation *m_pressAnim = nullptr;
+};
+
 // ------------------------------------------------------------------- TitleBar
 
 TitleBar::TitleBar(QWidget *parent)
@@ -216,16 +361,10 @@ TitleBar::TitleBar(QWidget *parent)
     layout->setContentsMargins(12, 0, 8, 0);
     layout->setSpacing(8);
 
-    auto *mark = new QLabel(this);
-    mark->setObjectName(QStringLiteral("appMark"));
-    mark->setFixedSize(18, 18);
-    mark->setPixmap(Icons::render(Icons::Id::Cairn, 17, Theme::brand(),
-                                  devicePixelRatioF()));
-    layout->addWidget(mark);
-
-    auto *name = new QLabel(QStringLiteral("Cairn"), this);
-    name->setObjectName(QStringLiteral("appName"));
-    layout->addWidget(name);
+    m_brand = new BrandButton(this);
+    m_brand->setObjectName(QStringLiteral("appBrand"));
+    m_brand->setToolTip(QStringLiteral("Open the project page"));
+    layout->addWidget(m_brand);
 
     m_subtitle = new QLabel(this);
     m_subtitle->setObjectName(QStringLiteral("appTag"));
@@ -257,6 +396,12 @@ TitleBar::TitleBar(QWidget *parent)
     connect(minimize, &IconButton::clicked, this, &TitleBar::minimizeRequested);
     connect(m_maximize, &IconButton::clicked, this, &TitleBar::maximizeRequested);
     connect(close, &IconButton::clicked, this, &TitleBar::closeRequested);
+}
+
+void TitleBar::setBrandLink(const QUrl &url)
+{
+    if (m_brand)
+        m_brand->setLink(url);
 }
 
 void TitleBar::setMaximized(bool maximized)
@@ -463,6 +608,7 @@ TitleBar *ChromeWindow::createTitleBar()
         return m_titleBar;
 
     m_titleBar = new TitleBar(this);
+    m_titleBar->setBrandLink(QUrl(QLatin1String(kProjectUrl)));
     m_frameLayout->addWidget(m_titleBar);
 
     connect(m_titleBar, &TitleBar::minimizeRequested, this, &QWidget::showMinimized);
