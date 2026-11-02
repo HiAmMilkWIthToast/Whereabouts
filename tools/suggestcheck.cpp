@@ -257,13 +257,10 @@ int main(int argc, char *argv[])
     {
         // The button is the one control that leaves the snapshot, so it is
         // styled apart from the neutral ghost buttons beside it.
-        QPushButton *back = nullptr;
-        for (QPushButton *b : window.findChildren<QPushButton *>()) {
-            if (b->text() == QStringLiteral("Sessions")) {
-                back = b;
-                break;
-            }
-        }
+        // Found by object name rather than by label: IconTextButton paints its
+        // own text and keeps Qt's text() empty, so matching on text() silently
+        // found nothing once the button grew an icon.
+        QPushButton *back = window.findChild<QPushButton *>(QStringLiteral("backLink"));
         check(back != nullptr, QStringLiteral("the Sessions button exists"));
         if (back) {
             check(back->objectName() == QStringLiteral("backLink"),

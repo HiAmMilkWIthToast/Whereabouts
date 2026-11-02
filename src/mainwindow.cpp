@@ -2,6 +2,7 @@
 #include "elidedlabel.h"
 #include "entryicon.h"
 #include "filterchip.h"
+#include "icontextbutton.h"
 #include "folderwatch.h"
 #include "inspector.h"
 #include "layoutview.h"
@@ -263,9 +264,10 @@ QWidget *MainWindow::buildLibraryPage()
     m_suggest->setModel(m_suggestModel);
     m_search->installEventFilter(this);
 
-    auto *newButton = new QPushButton(QStringLiteral("New snapshot"), page);
+    auto *newButton = new IconTextButton(Icons::Id::Plus,
+                                         QStringLiteral("New snapshot"), page);
     newButton->setObjectName(QStringLiteral("primary"));
-    newButton->setCursor(Qt::PointingHandCursor);
+    newButton->setToolTip(QStringLiteral("Record this folder as it is now (Ctrl+N)"));
     head->addWidget(newButton, 0, Qt::AlignVCenter);
 
     root->addLayout(head);
@@ -333,9 +335,10 @@ QWidget *MainWindow::buildDetailPage()
     auto *head = new QHBoxLayout;
     head->setSpacing(10);
 
-    auto *back = new QPushButton(QStringLiteral("Sessions"), page);
+    auto *back = new IconTextButton(Icons::Id::Home,
+                                    QStringLiteral("Sessions"), page);
     back->setObjectName(QStringLiteral("backLink"));
-    back->setCursor(Qt::PointingHandCursor);
+    back->setToolTip(QStringLiteral("Back to every snapshot (Esc)"));
     back->setFixedHeight(24);
     // The page title sits immediately after this button, so it needs a little
     // breathing room to read as a separate control rather than a prefix.
@@ -361,16 +364,19 @@ QWidget *MainWindow::buildDetailPage()
     head->addWidget(search, 0, Qt::AlignVCenter);
     m_find = search;
 
-    m_viewToggle = new QPushButton(QStringLiteral("List"), page);
+    m_viewToggle = new IconTextButton(Icons::Id::List,
+                                      QStringLiteral("List"), page);
     m_viewToggle->setObjectName(QStringLiteral("secondary"));
-    m_viewToggle->setCursor(Qt::PointingHandCursor);
-    m_viewToggle->setFixedWidth(62);
+    m_viewToggle->setFixedWidth(76);
     m_viewToggle->setCheckable(true);
+    m_viewToggle->setToolTip(QStringLiteral("Switch between the map and a sorted list"));
     head->addWidget(m_viewToggle, 0, Qt::AlignVCenter);
 
-    auto *exportButton = new QPushButton(QStringLiteral("Export"), page);
+    auto *exportButton = new IconTextButton(Icons::Id::Export,
+                                            QStringLiteral("Export"), page);
     exportButton->setObjectName(QStringLiteral("secondary"));
-    exportButton->setCursor(Qt::PointingHandCursor);
+    exportButton->setToolTip(
+        QStringLiteral("Write this snapshot out as a .session file"));
     head->addWidget(exportButton, 0, Qt::AlignVCenter);
 
     root->addLayout(head);
@@ -404,12 +410,13 @@ QWidget *MainWindow::buildDetailPage()
     m_sortBox->setFocusPolicy(Qt::NoFocus);
     sortRow->addWidget(m_sortBox);
 
-    m_sortDir = new QPushButton(QStringLiteral("↑ Ascending"), m_sortBar);
+    m_sortDir = new IconTextButton(Icons::Id::SortAsc,
+                                   QStringLiteral("Ascending"), m_sortBar);
     m_sortDir->setObjectName(QStringLiteral("secondary"));
-    m_sortDir->setCursor(Qt::PointingHandCursor);
     m_sortDir->setCheckable(true);
     m_sortDir->setFocusPolicy(Qt::NoFocus);
-    m_sortDir->setFixedWidth(112);
+    m_sortDir->setFixedWidth(118);
+    m_sortDir->setToolTip(QStringLiteral("Reverse the order"));
     sortRow->addWidget(m_sortDir);
     sortRow->addStretch(1);
     root->addWidget(m_sortBar);
@@ -424,8 +431,9 @@ QWidget *MainWindow::buildDetailPage()
         if (!m_layout || !m_sortBox)
             return;
         // Keep the label honest about the direction actually in effect.
-        m_sortDir->setText(descending ? QStringLiteral("↓ Descending")
-                                      : QStringLiteral("↑ Ascending"));
+        m_sortDir->setLabel(descending ? QStringLiteral("Descending")
+                                       : QStringLiteral("Ascending"));
+        m_sortDir->setIconId(descending ? Icons::Id::SortDesc : Icons::Id::SortAsc);
         const auto sort = LayoutView::Sort(
             m_sortBox->currentData().toInt());
         m_layout->setSort(sort, descending);
@@ -464,8 +472,11 @@ QWidget *MainWindow::buildDetailPage()
     connect(back, &QPushButton::clicked, this, [this] { setPage(LibraryPage); });
     connect(m_viewToggle, &QPushButton::clicked, this, [this] {
         const bool list = m_viewToggle->isChecked();
-        m_viewToggle->setText(list ? QStringLiteral("Map")
-                                   : QStringLiteral("List"));
+        // The button names the view it will switch to, so the glyph has to
+        // follow the word: grid for the map, rows for the list.
+        m_viewToggle->setLabel(list ? QStringLiteral("Map")
+                                    : QStringLiteral("List"));
+        m_viewToggle->setIconId(list ? Icons::Id::Grid : Icons::Id::List);
         m_layout->setMode(list ? LayoutView::Mode::List
                                : LayoutView::Mode::Map);
         // Sorting only affects the list, so the control appears with it instead

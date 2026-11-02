@@ -56,6 +56,7 @@ if "%ONLY%"=="" call :run debugcheck
 if "%ONLY%"=="" call :run scrollcheck
 if "%ONLY%"=="" call :run suggestcheck
 if "%ONLY%"=="" call :run brandcheck
+if "%ONLY%"=="" call :run iconcheck
 if /i "%ONLY%"=="e2e"     call :run e2e
 if /i "%ONLY%"=="windows" call :run windowprobe
 if /i "%ONLY%"=="capture" call :run capturecheck
@@ -72,6 +73,7 @@ if /i "%ONLY%"=="debug" call :run debugcheck
 if /i "%ONLY%"=="scroll" call :run scrollcheck
 if /i "%ONLY%"=="suggest" call :run suggestcheck
 if /i "%ONLY%"=="brand" call :run brandcheck
+if /i "%ONLY%"=="icons" call :run iconcheck
 
 if %FAILED% neq 0 (
   echo.

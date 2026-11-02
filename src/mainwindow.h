@@ -12,6 +12,7 @@ class QLabel;
 class QVBoxLayout;
 class QHBoxLayout;
 class QPushButton;
+class IconTextButton;
 class QComboBox;
 class QListView;
 class QStandardItemModel;
@@ -107,12 +108,12 @@ private:
     QLineEdit *m_find = nullptr;
     LayoutView *m_layout = nullptr;
     Inspector *m_inspector = nullptr;
-    QPushButton *m_viewToggle = nullptr;
+    IconTextButton *m_viewToggle = nullptr;
     QWidget *m_kindBar = nullptr;
     QHBoxLayout *m_kindRow = nullptr;
     QWidget *m_sortBar = nullptr;
     QComboBox *m_sortBox = nullptr;
-    QPushButton *m_sortDir = nullptr;
+    IconTextButton *m_sortDir = nullptr;
     // Only kinds switched off are recorded; an absent kind is on.
     QHash<int, bool> m_kindEnabled;
 

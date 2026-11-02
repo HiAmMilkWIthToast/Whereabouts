@@ -74,6 +74,30 @@ const char *svgFor(Id id)
     case Id::Restore:
         return STROKE("<rect x=\"4\" y=\"8\" width=\"12\" height=\"12\" rx=\"1.5\"/>"
                       "<path d=\"M8 8V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-3\"/>");
+    case Id::List:
+        // Three rules with their bullets, which reads as rows at 12px where a
+        // grid of squares would turn to mush.
+        return STROKE("<path d=\"M8.5 6h12\"/><path d=\"M8.5 12h12\"/>"
+                      "<path d=\"M8.5 18h12\"/><path d=\"M3.5 6h.01\"/>"
+                      "<path d=\"M3.5 12h.01\"/><path d=\"M3.5 18h.01\"/>");
+    case Id::Home:
+        // The stack again, reduced to a single stone: leaving a session returns
+        // to the pile you came from.
+        return STROKE("<path d=\"m3 10.5 9-7 9 7\"/>"
+                      "<path d=\"M5.5 8.8V19a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V8.8\"/>");
+    case Id::Export:
+        // A tray with an arrow leaving it: the snapshot goes out of the app.
+        return STROKE("<path d=\"M21 15v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3\"/>"
+                      "<path d=\"m8 8 4-4 4 4\"/><path d=\"M12 4v11\"/>");
+    case Id::SortAsc:
+        // Three strokes growing upward, with the direction drawn beneath them.
+        return STROKE("<path d=\"M7 20V9\"/><path d=\"m4 12 3-3 3 3\"/>"
+                      "<path d=\"M14 11h3\"/><path d=\"M14 15h5\"/>"
+                      "<path d=\"M14 19h7\"/>");
+    case Id::SortDesc:
+        return STROKE("<path d=\"M7 4v11\"/><path d=\"m4 12 3 3 3-3\"/>"
+                      "<path d=\"M14 5h7\"/><path d=\"M14 9h5\"/>"
+                      "<path d=\"M14 13h3\"/>");
     case Id::Grid:
         return STROKE("<rect x=\"3\" y=\"3\" width=\"7.5\" height=\"7.5\" rx=\"1.5\"/>"
                       "<rect x=\"13.5\" y=\"3\" width=\"7.5\" height=\"7.5\" rx=\"1.5\"/>"

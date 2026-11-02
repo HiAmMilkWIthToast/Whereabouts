@@ -27,6 +27,8 @@ set(CAIRN_SOURCES
     src/entryicon.h
     src/filterchip.h
     src/filterchip.cpp
+    src/icontextbutton.h
+    src/icontextbutton.cpp
     src/elidedlabel.h
     src/elidedlabel.cpp
     src/folderwatch.h
@@ -96,6 +98,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/e2e.cpp")
         suggestshot:tools/suggestshot.cpp    # renders the search list
         icotool:tools/icotool.cpp            # writes res/cairn.ico
         brandcheck:tools/brandcheck.cpp      # the clickable mark
+        iconcheck:tools/iconcheck.cpp        # every icon has artwork
         scrollcheck:tools/scrollcheck.cpp    # scrolling, list hit-testing, hover
     )
     foreach(entry IN LISTS CAIRN_TOOLS)

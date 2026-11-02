@@ -29,6 +29,11 @@ enum class Id {
     Plus,
     Info,
     Grid,
+    List,       // rows: the list view, and the companion to Grid
+    Home,       // back to the session list
+    Export,     // write a snapshot out
+    SortAsc,    // A to Z
+    SortDesc,   // Z to A
     Close,
     Minimize,
     Maximize,
