@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "elidedlabel.h"
 #include "entryicon.h"
 #include "filterchip.h"
 #include "folderwatch.h"
@@ -25,10 +26,13 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QListView>
+#include <QMouseEvent>
 #include <QMenu>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QSettings>
+#include <QStandardItemModel>
 #include <QTime>
 #include <QGuiApplication>
 #include <QScreen>
@@ -205,8 +209,14 @@ QWidget *MainWindow::buildLibraryPage()
     title->setObjectName(QStringLiteral("pageTitle"));
     titles->addWidget(title);
 
-    m_libraryCount = new QLabel(QString(), page);
-    m_libraryCount->setObjectName(QStringLiteral("pageSubtitle"));
+    // The stored path is long and the page is not always wide. A plain label
+    // runs on under the search box and is cut mid-word at the minimum window
+    // size, which reads as a rendering fault rather than a long name.
+    auto *count = new ElidedLabel(page);
+    // A distinct name: the detail page has a #pageSubtitle of its own, and
+    // sharing the name means lookups silently get whichever comes first.
+    count->setObjectName(QStringLiteral("librarySubtitle"));
+    m_libraryCount = count;
     titles->addWidget(m_libraryCount);
 
     // One line addressed to whoever is sitting here, so the window does not
@@ -225,10 +235,33 @@ QWidget *MainWindow::buildLibraryPage()
 
     m_search = new QLineEdit(page);
     m_search->setObjectName(QStringLiteral("field"));
+    // Several inputs share the #field style; the property is what tells this
+    // one apart for tests and for anything that needs to find it by role.
+    m_search->setProperty("role", QStringLiteral("sessionSearch"));
     m_search->setPlaceholderText(QStringLiteral("Filter sessions"));
     m_search->setFixedWidth(190);
     m_search->setClearButtonEnabled(true);
     head->addWidget(m_search, 0, Qt::AlignVCenter);
+
+    // A list laid over the page rather than a completer: a completer fills the
+    // box in with text, and what is wanted here is to open the snapshot.
+    //
+    // It is an ordinary child of the page, not a Qt::Popup window. A popup
+    // grabs the keyboard, which both took the caret out of the search box --
+    // so typing no longer reached it -- and ping-ponged focus between the two,
+    // showing and hiding the list forever.
+    m_suggest = new QListView(page);
+    m_suggest->setObjectName(QStringLiteral("suggestionList"));
+    m_suggest->hide();
+    m_suggest->setFrameShape(QFrame::NoFrame);
+    m_suggest->setUniformItemSizes(true);
+    m_suggest->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    m_suggest->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_suggest->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_suggest->setFocusPolicy(Qt::NoFocus);
+    m_suggestModel = new QStandardItemModel(m_suggest);
+    m_suggest->setModel(m_suggestModel);
+    m_search->installEventFilter(this);
 
     auto *newButton = new QPushButton(QStringLiteral("New snapshot"), page);
     newButton->setObjectName(QStringLiteral("primary"));
@@ -257,6 +290,19 @@ QWidget *MainWindow::buildLibraryPage()
                 || item->data(Qt::UserRole + 2).toString().contains(text, Qt::CaseInsensitive);
             item->setHidden(!match);
         }
+        syncSearchSuggestions();
+        // Typing is a reason to look at the list, so it opens as you go.
+        if (!text.isEmpty())
+            showSearchSuggestions();
+        else
+            hideSearchSuggestions();
+    });
+    connect(m_suggest, &QListView::clicked, this, [this](const QModelIndex &index) {
+        activateSuggestion(index.row());
+    });
+    // Enter in the popup too, for anyone reaching it with the keyboard.
+    connect(m_suggest, &QListView::activated, this, [this](const QModelIndex &index) {
+        activateSuggestion(index.row());
     });
     connect(m_list, &QListWidget::itemActivated, this, [this](QListWidgetItem *item) {
         if (item)
@@ -467,6 +513,141 @@ QWidget *MainWindow::buildDetailPage()
     return page;
 }
 
+void MainWindow::syncSearchSuggestions()
+{
+    // Rebuilt from the list rather than from m_sessions so the popup cannot
+    // disagree with what is on screen: one is drawn from the other.
+    if (!m_suggestModel || !m_list)
+        return;
+
+    m_suggestModel->clear();
+
+    for (int i = 0; i < m_list->count(); ++i) {
+        QListWidgetItem *item = m_list->item(i);
+        // Hidden items are the ones the search has already filtered out.
+        if (!item || item->isHidden())
+            continue;
+
+        auto *row = new QStandardItem(item->data(Qt::UserRole + 1).toString());
+        row->setData(item->data(Qt::UserRole), Qt::UserRole);
+        row->setToolTip(item->data(Qt::UserRole + 2).toString());
+        row->setEditable(false);
+        m_suggestModel->appendRow(row);
+    }
+
+    // The popup is useless with nothing to pick, and an empty box with no
+    // explanation is worse than none at all, so the reason is spelled out. It
+    // carries no id, so picking it does nothing.
+    if (m_suggestModel->rowCount() == 0) {
+        const QString reason = m_list->count() == 0
+            ? QStringLiteral("No snapshots yet")
+            : QStringLiteral("No snapshots match");
+        auto *empty = new QStandardItem(reason);
+        empty->setEnabled(false);
+        empty->setEditable(false);
+        m_suggestModel->appendRow(empty);
+    }
+
+    // Width follows the names, but the box is the floor: a popup narrower than
+    // the thing that opened it looks broken.
+    int widest = m_search ? m_search->width() : 190;
+    const QFontMetrics fm(m_suggest->font());
+    for (int i = 0; i < m_suggestModel->rowCount(); ++i) {
+        const QString text = m_suggestModel->item(i)->text();
+        widest = qMax(widest, fm.horizontalAdvance(text) + 28);
+    }
+    m_suggest->setFixedWidth(qMin(widest, 420));
+}
+
+void MainWindow::showSearchSuggestions()
+{
+    if (!m_suggest || !m_search || m_suggestModel->rowCount() == 0)
+        return;
+
+    const int rows = qMin(m_suggestModel->rowCount(), 7);
+    const int rowHeight = qMax(24, m_suggest->fontMetrics().height() + 12);
+    m_suggest->setFixedHeight(rows * rowHeight + 8);
+
+    // Hung directly below the box, left edges aligned. Coordinates are mapped
+    // into the page the list is a child of, so it follows the box if the window
+    // is resized or moved rather than hanging where the box used to be.
+    auto *page = m_suggest->parentWidget();
+    QPoint below = page->mapFromGlobal(
+        m_search->mapToGlobal(QPoint(0, m_search->height() + 2)));
+    // At the minimum window width the box sits close to the right edge, so a
+    // list as wide as the names would hang outside the page. Slide it back.
+    const int margin = 8;
+    below.setX(qBound(margin, below.x(),
+                      qMax(margin, page->width() - m_suggest->width() - margin)));
+    m_suggest->move(below);
+    m_suggest->show();
+    m_suggest->raise();
+}
+
+void MainWindow::hideSearchSuggestions()
+{
+    if (m_suggest)
+        m_suggest->hide();
+}
+
+void MainWindow::activateSuggestion(int row)
+{
+    if (!m_suggestModel || row < 0 || row >= m_suggestModel->rowCount())
+        return;
+
+    const QString id = m_suggestModel->item(row)->data(Qt::UserRole).toString();
+    hideSearchSuggestions();
+    // The placeholder carries no id; it is there to explain, not to open.
+    if (id.isEmpty())
+        return;
+
+    // Opening is what the list itself does on a click, so the popup behaves the
+    // same way rather than introducing a second meaning for a click.
+    m_search->clear();
+    openSessionById(id);
+}
+
+bool MainWindow::eventFilter(QObject *watched, QEvent *event)
+{
+    if (watched == m_search && m_search) {
+        if (event->type() == QEvent::FocusIn) {
+            syncSearchSuggestions();
+            showSearchSuggestions();
+        } else if (event->type() == QEvent::FocusOut) {
+            // The popup is a separate window and takes focus when clicked, so
+            // that case is left to QListView::clicked rather than closing here.
+            if (m_suggest && !m_suggest->hasFocus())
+                hideSearchSuggestions();
+        } else if (event->type() == QEvent::KeyPress) {
+            auto *key = static_cast<QKeyEvent *>(event);
+            if (key->key() == Qt::Key_Escape) {
+                hideSearchSuggestions();
+                return true;
+            }
+            // Down hands the choice to the popup so the arrows work from the box.
+            if (key->key() == Qt::Key_Down && m_suggest && m_suggest->isVisible()
+                && m_suggestModel->rowCount() > 0) {
+                m_suggest->setFocus();
+                m_suggest->setCurrentIndex(m_suggestModel->index(0, 0));
+                return true;
+            }
+            if ((key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter)
+                && m_suggest && m_suggest->isVisible()
+                && m_suggestModel->rowCount() > 0) {
+                // Enter with the popup open means "the obvious one": the first
+                // row, since the popup has only shown entries that already
+                // match what was typed.
+                activateSuggestion(0);
+                return true;
+            }
+        }
+    }
+    // QWidget's own filter, not a call back into this override: the base class
+    // of this override is MainWindow, so naming it would re-enter and overflow
+    // the stack.
+    return QWidget::eventFilter(watched, event);
+}
+
 void MainWindow::refreshLibrary()
 {
     m_sessions = SessionStore::listAll();
@@ -481,7 +662,10 @@ void MainWindow::refreshLibrary()
         m_list->setItemWidget(item, new SessionCard(session, m_list));
     }
 
-    m_libraryCount->setText(m_sessions.isEmpty()
+    syncSearchSuggestions();
+
+    auto *count = static_cast<ElidedLabel *>(m_libraryCount);
+    count->setFullText(m_sessions.isEmpty()
         ? QStringLiteral("No snapshots yet — take one to get started.")
         : QStringLiteral("%1 snapshot%2 stored in %3")
               .arg(m_sessions.size())
@@ -918,6 +1102,9 @@ void MainWindow::exportSession()
 
 void MainWindow::setPage(Page page)
 {
+    // The popup belongs to the library page, so leaving it must not leave the
+    // list hanging over the detail view.
+    hideSearchSuggestions();
     m_pages->setCurrentIndex(int(page));
     m_sidebar->setActive(page == LibraryPage ? m_libraryNav : m_openNav);
     if (page == LibraryPage)

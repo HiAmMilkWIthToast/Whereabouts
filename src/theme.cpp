@@ -147,7 +147,7 @@ QLabel#pageTitle {
     font-size: 17px;
     font-weight: 600;
 }
-QLabel#pageSubtitle {
+QLabel#pageSubtitle, QLabel#librarySubtitle {
     color: #767d87;
     font-size: 11px;
 }
@@ -213,6 +213,28 @@ QLineEdit#field {
 }
 QLineEdit#field:focus {
     border-color: %ACCENT%;
+}
+/* The search box's own list. A top-level popup, so it cannot be styled as a
+   descendant of the line edit and is named by its own object name. */
+QListView#suggestionList {
+    background: #14171b;
+    border: 1px solid #282d34;
+    border-radius: 6px;
+    color: #e4e7ec;
+    font-size: 11px;
+    padding: 4px;
+    outline: 0;
+}
+QListView#suggestionList::item {
+    padding: 5px 8px;
+    border-radius: 4px;
+}
+QListView#suggestionList::item:hover {
+    background: #1b1f25;
+}
+QListView#suggestionList::item:selected {
+    background: %ACCENT_DIM%;
+    color: #ffffff;
 }
 QLineEdit#monoField {
     background: #0e1013;

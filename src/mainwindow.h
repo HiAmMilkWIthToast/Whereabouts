@@ -13,6 +13,8 @@ class QVBoxLayout;
 class QHBoxLayout;
 class QPushButton;
 class QComboBox;
+class QListView;
+class QStandardItemModel;
 class LayoutView;
 class Inspector;
 class FolderWatcher;
@@ -47,6 +49,7 @@ public slots:
 protected:
     void keyPressEvent(QKeyEvent *event) override;
     void closeEvent(QCloseEvent *event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 signals:
     void sessionOpened(const QString &sessionId);
@@ -62,6 +65,15 @@ private:
     bool geometryIsOnScreen() const;
     void showSessionMenu(const QString &id);
     void exportSession();
+
+    // The search box offers what is in the library while you look for it, so a
+    // name does not have to be remembered to be found.
+    void syncSearchSuggestions();
+    void showSearchSuggestions();
+    void hideSearchSuggestions();
+    // Opens the snapshot at `row`, or does nothing when the row is the "no
+    // matches" placeholder.
+    void activateSuggestion(int row);
 
     // Rebuilds the kind-filter chips for the current session and pushes the
     // resulting filter into the map.
@@ -81,8 +93,12 @@ private:
     // library
     QListWidget *m_list = nullptr;
     QLineEdit *m_search = nullptr;
+    // An ElidedLabel, kept as QLabel because that is all the rest of the class
+    // needs from it.
     QLabel *m_libraryCount = nullptr;
     QLabel *m_welcome = nullptr;
+    QListView *m_suggest = nullptr;
+    QStandardItemModel *m_suggestModel = nullptr;
     QList<Session> m_sessions;
 
     // detail

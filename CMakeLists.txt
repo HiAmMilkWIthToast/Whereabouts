@@ -27,6 +27,8 @@ set(CAIRN_SOURCES
     src/entryicon.h
     src/filterchip.h
     src/filterchip.cpp
+    src/elidedlabel.h
+    src/elidedlabel.cpp
     src/folderwatch.h
     src/folderwatch.cpp
     src/layoutview.h
@@ -84,6 +86,8 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/e2e.cpp")
         debugcheck:tools/debugcheck.cpp      # bugs found in the debug pass
         headershot:tools/headershot.cpp      # renders the header for inspection
         popupshot:tools/popupshot.cpp        # reproduces the sort popup
+        suggestcheck:tools/suggestcheck.cpp  # the search box's snapshot list
+        suggestshot:tools/suggestshot.cpp    # renders the search list
         scrollcheck:tools/scrollcheck.cpp    # scrolling, list hit-testing, hover
     )
     foreach(entry IN LISTS CAIRN_TOOLS)
