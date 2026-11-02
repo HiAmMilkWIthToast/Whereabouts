@@ -1,0 +1,9 @@
+# Build output
+build/
+dist/
+
+# Qt runtime staged beside the exe by build.bat
+*.dll
+
+# Local .session files, if a snapshot is ever taken inside the repo
+*.session
