@@ -191,24 +191,33 @@ void LayoutView::rebuildMap()
         }
     }
 
-    const qreal columns = colRemap.isEmpty()
-        ? 1.0 : *std::max_element(colRemap.begin(), colRemap.end()) + 1;
-    const qreal rows = rowRemap.isEmpty()
-        ? 1.0 : *std::max_element(rowRemap.begin(), rowRemap.end()) + 1;
-
     const qreal stepX = kTileWidth + kTileGap;
     const qreal stepY = kTileHeight + kTileGap;
 
     // Explorer positions are the top-left of the icon, not the cell, so they are
     // folded into the same grid the computed layout uses. This keeps mixed
     // sessions (some live, some computed) coherent.
+    //
+    // Two icons sitting a few pixels apart on a desktop with grid alignment off
+    // round into the same cell. Drawing both there put one tile exactly on top
+    // of the other, hiding it completely and making it impossible to select. A
+    // cell that is already taken now pushes the later item down a row.
+    QSet<qint64> occupied;
+    int maxCol = 0;
+    int maxRow = 0;
     for (const Entry &entry : m_session.entries) {
         if (!isVisible(entry))
             continue;
 
         const QPoint cellPos = effectiveCell(entry);
         const int col = colRemap.value(cellPos.x() - minCell.x(), 0);
-        const int row = rowRemap.value(cellPos.y() - minCell.y(), 0);
+        int row = rowRemap.value(cellPos.y() - minCell.y(), 0);
+        while (occupied.contains(qint64(col) * 100000 + row))
+            ++row;
+        occupied.insert(qint64(col) * 100000 + row);
+        maxCol = qMax(maxCol, col);
+        maxRow = qMax(maxRow, row);
+
         const QPointF topLeft(kMargin + col * stepX, kMargin + row * stepY);
 
         Tile tile;
@@ -230,8 +239,10 @@ void LayoutView::rebuildMap()
             : QStringLiteral("No items match \"%1\".").arg(m_search);
     }
 
-    const qreal width = kMargin * 2 + columns * stepX - kTileGap;
-    const qreal height = kMargin * 2 + rows * stepY - kTileGap;
+    // Sized from the cells actually used, after any collision nudging, so a
+    // tile can never be laid out beyond the scrollable canvas.
+    const qreal width = kMargin * 2 + (maxCol + 1) * stepX - kTileGap;
+    const qreal height = kMargin * 2 + (maxRow + 1) * stepY - kTileGap;
     // The canvas is virtual: only the scrollbars know about its extent, so the
     // widget itself can stay as small as the window wants.
     m_canvasSize = QSizeF(qMax(width, stepX), qMax(height, stepY));
@@ -380,13 +391,15 @@ QList<QString> LayoutView::visiblePaths() const
 
 QHash<QString, QRectF> LayoutView::tileRects() const
 {
-    const QPointF scrolled(-horizontalScrollBar()->value(),
-                           -verticalScrollBar()->value());
+    // m_origin already includes the scroll offset (see updateScrollRanges), so
+    // it must not be subtracted again here. Doing so moved every reported
+    // rectangle by the scroll amount and made these rectangles disagree with
+    // what paintEvent actually drew.
     QHash<QString, QRectF> rects;
     rects.reserve(m_tiles.size());
     for (const Tile &tile : m_tiles) {
-        const QRectF onScreen(m_origin.x() + tile.rect.x() * m_zoom + scrolled.x(),
-                              m_origin.y() + tile.rect.y() * m_zoom + scrolled.y(),
+        const QRectF onScreen(m_origin.x() + tile.rect.x() * m_zoom,
+                              m_origin.y() + tile.rect.y() * m_zoom,
                               tile.rect.width() * m_zoom,
                               tile.rect.height() * m_zoom);
         rects.insert(tile.path, onScreen);
@@ -437,9 +450,12 @@ void LayoutView::mousePressEvent(QMouseEvent *event)
         }
         viewport()->update();
     } else {
-        // Dragging empty canvas pans the map.
+        // Dragging empty canvas pans the map. The pan already in effect is kept
+        // as the new baseline, so a second drag continues from where the first
+        // left off instead of snapping the view back.
         m_dragging = true;
         m_dragStart = event->pos();
+        m_panStartOffset = m_panOffset;
         viewport()->setCursor(Qt::ClosedHandCursor);
     }
 }
@@ -448,7 +464,7 @@ void LayoutView::mouseMoveEvent(QMouseEvent *event)
 {
     if (m_dragging && (event->buttons() & Qt::LeftButton)) {
         const QPoint delta = event->pos() - m_dragStart;
-        m_panOffset = QPointF(delta.x(), delta.y());
+        m_panOffset = m_panStartOffset + QPointF(delta.x(), delta.y());
         updateScrollRanges();
         viewport()->update();
         return;
@@ -508,7 +524,10 @@ void LayoutView::paintEvent(QPaintEvent *)
     p.setRenderHint(QPainter::Antialiasing);
     p.fillRect(viewport()->rect(), QColor(QStringLiteral("#0b0d10")));
 
-    if (m_tiles.isEmpty() && m_session.entries.isEmpty()) {
+    // Draw the empty state whenever there is nothing to show. This used to be
+    // gated on the session also being empty, so filtering every item out left a
+    // blank canvas with no explanation of why.
+    if (m_tiles.isEmpty()) {
         p.setPen(QColor(QStringLiteral("#4f555e")));
         QFont f = font();
         f.setPointSizeF(9.5);

@@ -97,6 +97,7 @@ private:
     QSizeF m_canvasSize;        // natural size of the laid-out content
     QPointF m_origin;           // canvas offset inside the viewport
     QPointF m_panOffset;        // user pan, added on top of the centring
+    QPointF m_panStartOffset;   // pan in effect when the current drag began
     QPoint m_dragStart;
     bool m_dragging = false;
     bool m_userZoomed = false;

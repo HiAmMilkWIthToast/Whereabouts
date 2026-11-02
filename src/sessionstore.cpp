@@ -6,6 +6,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonDocument>
+#include <QSaveFile>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QSet>
@@ -66,7 +67,27 @@ QString sanitize(const QString &name)
     for (const QChar &c : invalid)
         cleaned.replace(c, QLatin1Char('-'));
     cleaned = cleaned.trimmed();
-    return cleaned.isEmpty() ? QStringLiteral("session") : cleaned;
+    if (cleaned.isEmpty())
+        return QStringLiteral("session");
+
+    // Windows reserves these names for devices, and a file called "con.session"
+    // is not a normal file. A folder named CON, PRN, AUX or NUL would otherwise
+    // produce an id that could not be written or deleted.
+    static const QSet<QString> reserved = {
+        QStringLiteral("con"),  QStringLiteral("prn"),  QStringLiteral("aux"),
+        QStringLiteral("nul"),  QStringLiteral("com1"), QStringLiteral("com2"),
+        QStringLiteral("com3"), QStringLiteral("com4"), QStringLiteral("com5"),
+        QStringLiteral("com6"), QStringLiteral("com7"), QStringLiteral("com8"),
+        QStringLiteral("com9"), QStringLiteral("lpt1"), QStringLiteral("lpt2"),
+        QStringLiteral("lpt3"), QStringLiteral("lpt4"), QStringLiteral("lpt5"),
+        QStringLiteral("lpt6"), QStringLiteral("lpt7"), QStringLiteral("lpt8"),
+        QStringLiteral("lpt9")
+    };
+    // The rule applies to the stem, so "con.txt" is reserved as well.
+    const QString stem = cleaned.section(QLatin1Char('.'), 0, 0).toLower();
+    if (reserved.contains(stem) || reserved.contains(cleaned.toLower()))
+        cleaned.prepend(QLatin1Char('_'));
+    return cleaned;
 }
 
 } // namespace
@@ -269,19 +290,30 @@ bool save(const Session &session, QString *error)
     QDir().mkpath(directory());
     const QString path = pathForId(session.id);
 
-    QJsonDocument document(session.toJson());
-    QFile file(path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+    // Write through QSaveFile so the file is replaced atomically. Opening the
+    // real path with Truncate emptied a perfectly good session before a single
+    // byte was written, so a full disk or a failed write left the user with a
+    // truncated, unloadable file and no way back.
+    QSaveFile file(path);
+    if (!file.open(QIODevice::WriteOnly)) {
         if (error)
             *error = file.errorString();
         return false;
     }
-    if (file.write(document.toJson(QJsonDocument::Indented)) < 0) {
+
+    const QJsonDocument document(session.toJson());
+    const QByteArray bytes = document.toJson(QJsonDocument::Indented);
+    if (file.write(bytes) != bytes.size()) {
+        if (error)
+            *error = file.errorString();
+        file.cancelWriting();
+        return false;
+    }
+    if (!file.commit()) {
         if (error)
             *error = file.errorString();
         return false;
     }
-    file.close();
 
     // Remember the most recent handle so the viewer can offer it first.
     QSettings settings;
@@ -339,9 +371,13 @@ QList<Session> listAll(const QStringList &paths)
             sessions.append(session);
     }
 
+    // Newest first. Ties are broken by id so the order is stable between
+    // refreshes instead of depending on the scan order of the directory.
     std::sort(sessions.begin(), sessions.end(),
               [](const Session &a, const Session &b) {
-                  return a.capturedAt > b.capturedAt;
+                  if (a.capturedAt != b.capturedAt)
+                      return a.capturedAt > b.capturedAt;
+                  return a.id > b.id;
               });
     return sessions;
 }

@@ -1,9 +1,12 @@
 # Build output
 build/
-dist/
 
-# Qt runtime staged beside the exe by build.bat
-*.dll
+# Local packaging scratch: build.bat deploy regenerates this from scratch.
+dist/
 
 # Local .session files, if a snapshot is ever taken inside the repo
 *.session
+
+# release/ is deliberately NOT ignored: it is the published, runnable copy of
+# the app and must contain every DLL it needs. A blanket "*.dll" rule here once
+# dropped release/platforms/qwindows.dll, which makes the exe fail to start.

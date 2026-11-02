@@ -84,6 +84,7 @@ int main(int argc, char *argv[])
         QObject::connect(viewer, &QObject::destroyed, &app, &QApplication::quit);
         if (viewer->showSession(toOpen))
             return app.exec();
+        delete viewer;
         return 1;
     }
 

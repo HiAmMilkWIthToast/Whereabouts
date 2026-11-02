@@ -65,6 +65,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/e2e.cpp")
         capturecheck:tools/capturecheck.cpp  # prints a real capture of this machine
         e2e:tools/e2e.cpp                    # capture -> save -> reload -> lay out
         windowprobe:tools/windowprobe.cpp    # clicks every title-bar control
+        regress:tools/regress.cpp            # regression checks for fixed flaws
     )
     foreach(entry IN LISTS CAIRN_TOOLS)
         string(REPLACE ":" ";" parts "${entry}")

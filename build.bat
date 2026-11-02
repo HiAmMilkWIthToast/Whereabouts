@@ -2,7 +2,7 @@
 rem Builds Cairn with the Qt/MinGW install on this machine.
 rem
 rem   build.bat            build build\cairn.exe
-rem   build.bat deploy     also stage a runnable copy in dist\
+rem   build.bat deploy     also stage a runnable copy in release\
 setlocal
 
 set "QT_DIR=C:/Qt/6.12.0/mingw_64"
@@ -46,14 +46,18 @@ echo Build OK: %BUILD%\cairn.exe
 exit /b 0
 
 :deploy
-if not exist dist mkdir dist
-copy /y %BUILD%\cairn.exe dist\ >nul
+rem release\ is the tracked, runnable copy: the exe plus exactly the Qt and
+rem MinGW DLLs it needs, and the platform plugin. It is rebuilt from scratch each
+rem time so a stale DLL can never be left behind.
+if exist release rmdir /s /q release
+mkdir release
+copy /y %BUILD%\cairn.exe release\ >nul
 "%QT_DIR%\bin\windeployqt.exe" --release --compiler-runtime ^
   --no-translations --no-opengl-sw --no-system-d3d-compiler ^
   --skip-plugin-types imageformats,iconengines,generic,styles,tls,networkinformation ^
-  dist\cairn.exe
+  release\cairn.exe
 if errorlevel 1 exit /b 1
-echo Staged: dist\cairn.exe
+echo Staged: release\cairn.exe
 exit /b 0
 
 :usage

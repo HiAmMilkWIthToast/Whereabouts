@@ -114,22 +114,25 @@ bool readDesktopView(QHash<QString, QPoint> &positions,
     while (items->Next(1, &item, nullptr) == S_OK) {
         POINT point{-1, -1};
         if (SUCCEEDED(folderView->GetItemPosition(item, &point))) {
-            char displayName[MAX_PATH] = {0};
+            // Wide APIs on purpose: fromLocal8Bit mangled any name outside the
+            // local codepage, so the name never matched the real file and that
+            // icon silently fell back to a computed position.
+            wchar_t displayName[MAX_PATH] = {0};
             STRRET strret;
             if (SUCCEEDED(folder->GetDisplayNameOf(item, SHGDN_INFOLDER, &strret)))
-                StrRetToBufA(&strret, item, displayName, MAX_PATH);
+                StrRetToBufW(&strret, item, displayName, MAX_PATH);
 
-            const QString name = QString::fromLocal8Bit(displayName);
+            const QString name = QString::fromWCharArray(displayName);
             if (!name.isEmpty())
                 positions.insert(name, QPoint(point.x, point.y));
 
             // Shortcuts are the one entry whose meaning lives somewhere else;
             // resolve it so the inspector can show where it points.
             if (name.endsWith(QLatin1String(".lnk"), Qt::CaseInsensitive)) {
-                LPSTR target = nullptr;
+                LPWSTR target = nullptr;
                 if (SUCCEEDED(folder->GetDisplayNameOf(item, SHGDN_FORPARSING, &strret))
-                    && SUCCEEDED(StrRetToStrA(&strret, item, &target))) {
-                    const QString full = QString::fromLocal8Bit(target);
+                    && SUCCEEDED(StrRetToStrW(&strret, item, &target))) {
+                    const QString full = QString::fromWCharArray(target);
                     if (!full.isEmpty())
                         targets.insert(name, full);
                     CoTaskMemFree(target);

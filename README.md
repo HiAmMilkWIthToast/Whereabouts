@@ -17,6 +17,18 @@ A Cairn session records, for every item in a folder:
 It does **not** copy any file. A `.session` file holds a few kilobytes of
 metadata — a map, not a backup. No file contents are ever read or stored.
 
+## Running it
+
+`release\` is a self-contained build for Windows x64. Run `release\cairn.exe`
+directly — it needs no Qt install and nothing else on the machine:
+
+    cairn.exe                      # the library
+    cairn.exe -o desktop-1k4f2a    # a saved snapshot
+
+The folder holds the executable, the Qt and MinGW runtime DLLs, and
+`platforms\qwindows.dll`. That last one is not optional: Qt refuses to start
+without it, and it must sit in a `platforms` folder next to the exe.
+
 ## Using it
 
 On first launch it asks which folder to snapshot. Pick the desktop and it reads
@@ -51,7 +63,7 @@ window, and the maximize glyph switches to Restore while the window is maximized
 Requires Qt 6 and a C++17 compiler. On Windows with the Qt MinGW kit:
 
     build.bat           # builds build\cairn.exe
-    build.bat deploy    # also stages a runnable copy in dist\
+    build.bat deploy    # also stages the runnable copy in release\
 
 `build.bat` expects Qt at `C:\Qt\6.12.0\mingw_64`; edit the paths at the top of
 the script for another install.

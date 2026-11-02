@@ -14,6 +14,7 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QSaveFile>
 #include <QHBoxLayout>
 #include <QInputDialog>
 #include <QKeyEvent>
@@ -588,10 +589,24 @@ void MainWindow::exportSession()
         QStringLiteral("Cairn session (*.session)"));
     if (target.isEmpty())
         return;
-    QFile::remove(target);
-    if (!QFile::copy(SessionStore::pathForId(m_current.id), target)) {
+
+    // Write through QSaveFile rather than removing the destination first. The
+    // old order destroyed whatever already sat at that path before it knew the
+    // copy would succeed, so a failed export lost both files.
+    QFile source(SessionStore::pathForId(m_current.id));
+    if (!source.open(QIODevice::ReadOnly)) {
         QMessageBox::warning(this, QStringLiteral("Export failed"),
-                             QStringLiteral("The session file could not be copied."));
+                             QStringLiteral("The session file could not be read."));
+        return;
+    }
+    const QByteArray bytes = source.readAll();
+
+    QSaveFile out(target);
+    if (!out.open(QIODevice::WriteOnly)
+        || out.write(bytes) != bytes.size()
+        || !out.commit()) {
+        QMessageBox::warning(this, QStringLiteral("Export failed"),
+                             QStringLiteral("The session file could not be written there."));
         return;
     }
     m_status->setState(QStringLiteral("exported"), true);

@@ -163,7 +163,13 @@ OnboardingDialog::OnboardingDialog(const QString &suggestedPath, bool firstRun,
 
 QString OnboardingDialog::chosenPath() const
 {
-    return QDir::cleanPath(m_pathEdit->text().trimmed());
+    const QString typed = m_pathEdit->text().trimmed();
+    // Keep "nothing typed" as an empty string. QDir::cleanPath turns it into
+    // ".", which then passes the isDir() test and silently snapshots whatever
+    // directory the process happens to be running from.
+    if (typed.isEmpty())
+        return QString();
+    return QDir::cleanPath(typed);
 }
 
 QString OnboardingDialog::sessionName() const
