@@ -5,6 +5,10 @@ A dark, compact desktop app that records where everything sits in a folder.
 A cairn is a stack of stones that marks a place — that is all this does: it
 remembers the *arrangement* of a folder so you can look at it later.
 
+Source, issues and releases live at
+[github.com/HiAmMilkWIthToast/Whereabouts](https://github.com/HiAmMilkWIthToast/Whereabouts).
+The mark in the top-left corner of every window opens it.
+
 ## What it is, and what it is not
 
 A Cairn session records, for every item in a folder:
@@ -80,6 +84,20 @@ Requires Qt 6 and a C++17 compiler. On Windows with the Qt MinGW kit:
 `build.bat` expects Qt at `C:\Qt\6.12.0\mingw_64`; edit the paths at the top of
 the script for another install.
 
+The executable icon is committed rather than built: `res\cairn.ico` is compiled
+in through `res\cairn.rc`, so Explorer, the taskbar and Alt-Tab show it without
+the app having to start first. It is drawn by the same code that paints the mark
+in the title bar, so the two cannot disagree -- regenerate it after changing the
+mark:
+
+    cmake --build build --target cairn_icotool
+    build\tools\cairn_icotool.exe
+
+That writes `res\cairn.ico` (seven sizes, 16 through 256) and
+`res\cairn-256.png`. Below 32px the icon uses fewer stones, because the full
+mark's gaps fall inside a single pixel and the stack merges into one blob.
+
+
 Or with CMake directly:
 
     cmake -S . -B build -DCMAKE_PREFIX_PATH=C:/Qt/6.12.0/mingw_64
@@ -92,6 +110,7 @@ Or with CMake directly:
 | `src/theme.*` | colours, metrics, the single stylesheet |
 | `src/icons.*` | inline SVG icons, rasterised and tinted at paint time |
 | `src/chrome.*` | frameless window, title bar, sidebar, status bar |
+| `res/` | the compiled-in icon, and the resource script that embeds it |
 | `src/sessionmodel.*` | `Entry`, `Session`, type detection, JSON |
 | `src/desktoppositions.*` | real Explorer icon positions via the shell view |
 | `src/sessionstore.*` | capture, save, load, the session library |
