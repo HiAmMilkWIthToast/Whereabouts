@@ -12,6 +12,7 @@ class QLabel;
 class QVBoxLayout;
 class QHBoxLayout;
 class QPushButton;
+class QComboBox;
 class LayoutView;
 class Inspector;
 
@@ -44,6 +45,7 @@ public slots:
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
+    void closeEvent(QCloseEvent *event) override;
 
 signals:
     void sessionOpened(const QString &sessionId);
@@ -56,8 +58,14 @@ private:
     void applySession(const Session &session);
     void openSessionById(const QString &id);
     void setPage(Page page);
+    bool geometryIsOnScreen() const;
     void showSessionMenu(const QString &id);
     void exportSession();
+
+    // Rebuilds the kind-filter chips for the current session and pushes the
+    // resulting filter into the map.
+    void rebuildKindFilter();
+    void applyKindFilter();
 
     QStackedWidget *m_pages = nullptr;
     Sidebar *m_sidebar = nullptr;
@@ -76,6 +84,13 @@ private:
     LayoutView *m_layout = nullptr;
     Inspector *m_inspector = nullptr;
     QPushButton *m_viewToggle = nullptr;
+    QWidget *m_kindBar = nullptr;
+    QHBoxLayout *m_kindRow = nullptr;
+    QWidget *m_sortBar = nullptr;
+    QComboBox *m_sortBox = nullptr;
+    QPushButton *m_sortDir = nullptr;
+    // Only kinds switched off are recorded; an absent kind is on.
+    QHash<int, bool> m_kindEnabled;
 
     Session m_current;
     int m_libraryNav = 0;   // sidebar ids, assigned in the constructor

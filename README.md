@@ -52,11 +52,23 @@ That is the whole sharing story: send someone the small file.
 | `Ctrl+O` | Open a session by its handle (library) |
 | `Ctrl+F` | Focus the item search |
 | `Ctrl+0` | Fit the map to the window (viewer) |
-| `Esc` | Back to the session list (library) |
+| Arrow keys | Move the selection between items, wrapping at the edges |
+| `Enter` | Activate the selected item |
+| `Esc` | Clear the selection, or go back to the session list |
 
 Closing a window ends the app: the library and a lone viewer are each the whole
 program. Minimize, maximize/restore and close live on the title bar of every
 window, and the maximize glyph switches to Restore while the window is maximized.
+
+## Filtering and sorting
+
+Above the map, one chip per kind of item in the session shows its count. Click a
+chip to hide that kind; click it again to bring it back.
+
+In list mode a sort control appears: Name, Size, Modified or Kind, ascending or
+descending. Folders always sort ahead of files.
+
+See [FEATURES.md](FEATURES.md) for what each feature does and how it is tested.
 
 ## Building
 

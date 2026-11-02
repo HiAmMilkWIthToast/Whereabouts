@@ -4,6 +4,7 @@
 
 #include <QFontMetrics>
 #include <QHelpEvent>
+#include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
@@ -44,6 +45,9 @@ LayoutView::LayoutView(QWidget *parent)
     setMouseTracking(true);
     viewport()->setMouseTracking(true);
     viewport()->setCursor(Qt::ArrowCursor);
+    // Arrow keys and Escape are handled here, so the view has to be able to
+    // take focus. Clicking it or tabbing to it both work.
+    setFocusPolicy(Qt::StrongFocus);
     setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     viewport()->setAutoFillBackground(false);
@@ -86,6 +90,20 @@ void LayoutView::setSearch(const QString &text)
         return;
     m_search = text;
     rebuild();
+}
+
+void LayoutView::setSort(Sort sort, bool descending)
+{
+    if (m_sort == sort && m_sortDescending == descending)
+        return;
+    m_sort = sort;
+    m_sortDescending = descending;
+    // Only the list has an order to change; map mode is positional, so it does
+    // not need to redo anything.
+    if (m_mode == Mode::List) {
+        rebuildList();
+        emit viewChanged();
+    }
 }
 
 bool LayoutView::isVisible(const Entry &entry) const
@@ -267,11 +285,43 @@ void LayoutView::rebuildList()
         if (isVisible(entry))
             visible.append(entry);
     }
+    // Folders always sort ahead of files, then within each group by the chosen
+    // key. Interleaving a folder between files by name reads worse than keeping
+    // the two groups apart, which is also how Explorer presents them.
+    const Sort sort = m_sort;
+    const bool descending = m_sortDescending;
     std::stable_sort(visible.begin(), visible.end(),
-                     [](const Entry &a, const Entry &b) {
-                         if (a.name.compare(b.name, Qt::CaseInsensitive) != 0)
-                             return a.name.compare(b.name, Qt::CaseInsensitive) < 0;
-                         return a.suffix < b.suffix;
+                     [sort, descending](const Entry &a, const Entry &b) {
+                         const bool aDir = a.kind == Kind::Folder;
+                         const bool bDir = b.kind == Kind::Folder;
+                         if (aDir != bDir)
+                             return aDir;
+
+                         int cmp = 0;
+                         switch (sort) {
+                         case Sort::Name:
+                             cmp = a.name.compare(b.name, Qt::CaseInsensitive);
+                             break;
+                         case Sort::Size:
+                             // A folder's size is a capped directory total, so it
+                             // is not comparable with a file; break the tie by
+                             // name to keep the order stable.
+                             cmp = a.size == b.size ? 0 : (a.size < b.size ? -1 : 1);
+                             break;
+                         case Sort::Modified:
+                             if (a.modified != b.modified)
+                                 cmp = a.modified < b.modified ? -1 : 1;
+                             break;
+                         case Sort::Kind:
+                             cmp = kindShortName(a.kind).compare(
+                                 kindShortName(b.kind), Qt::CaseInsensitive);
+                             break;
+                         }
+                         if (cmp == 0)
+                             cmp = a.name.compare(b.name, Qt::CaseInsensitive);
+                         if (cmp == 0)
+                             cmp = a.suffix.compare(b.suffix, Qt::CaseInsensitive);
+                         return descending ? cmp > 0 : cmp < 0;
                      });
 
     if (visible.isEmpty()) {
@@ -440,6 +490,8 @@ void LayoutView::mousePressEvent(QMouseEvent *event)
         QAbstractScrollArea::mousePressEvent(event);
         return;
     }
+    setFocus(Qt::MouseFocusReason);
+
     const int index = hitTest(event->position());
     if (index >= 0) {
         const QString path = m_tiles.at(index).path;
@@ -516,6 +568,189 @@ QString LayoutView::elided(const QString &text, const QFont &font, qreal width) 
     // Right-elide: the start of a file name is what identifies it, and the
     // extension is repeated in the tile's metadata line below.
     return QFontMetrics(font).elidedText(text, Qt::ElideRight, int(width));
+}
+
+void LayoutView::ensureSelectionVisible()
+{
+    if (m_selectedPath.isEmpty())
+        return;
+
+    int index = -1;
+    for (int i = 0; i < m_tiles.size(); ++i) {
+        if (m_tiles.at(i).path == m_selectedPath) {
+            index = i;
+            break;
+        }
+    }
+    if (index < 0)
+        return;
+
+    // Where the tile actually sits once scaled and offset.
+    const QRectF tile = m_tiles.at(index).rect;
+    const QRectF onScreen(m_origin.x() + tile.x() * m_zoom,
+                          m_origin.y() + tile.y() * m_zoom,
+                          tile.width() * m_zoom,
+                          tile.height() * m_zoom);
+
+    if (onScreen.top() < 0)
+        verticalScrollBar()->setValue(verticalScrollBar()->value()
+                                      + int(onScreen.top()) - 6);
+    else if (onScreen.bottom() > viewport()->height())
+        verticalScrollBar()->setValue(verticalScrollBar()->value()
+                                      + int(onScreen.bottom() - viewport()->height()) + 6);
+
+    if (onScreen.left() < 0)
+        horizontalScrollBar()->setValue(horizontalScrollBar()->value()
+                                        + int(onScreen.left()) - 6);
+    else if (onScreen.right() > viewport()->width())
+        horizontalScrollBar()->setValue(horizontalScrollBar()->value()
+                                        + int(onScreen.right() - viewport()->width()) + 6);
+
+    updateScrollRanges();
+    viewport()->update();
+}
+
+bool LayoutView::moveSelection(int dx, int dy)
+{
+    if (m_tiles.isEmpty())
+        return false;
+
+    const auto select = [this](int index) {
+        const QString path = m_tiles.at(index).path;
+        if (path == m_selectedPath)
+            return true;
+        m_selectedPath = path;
+        emit entrySelected(path);
+        emit viewChanged();
+        ensureSelectionVisible();
+        viewport()->update();
+        return true;
+    };
+
+    // Current position; -1 when nothing is selected yet.
+    int current = -1;
+    for (int i = 0; i < m_tiles.size(); ++i) {
+        if (m_tiles.at(i).path == m_selectedPath) {
+            current = i;
+            break;
+        }
+    }
+
+    if (current < 0) {
+        // First arrow press selects the first visible tile.
+        return select(0);
+    }
+
+    if (m_mode == Mode::List) {
+        // The list is a single column, so up/down walk it and left/right do
+        // nothing. Wrapping at the ends makes long lists quick to traverse.
+        if (dy == 0 && dx != 0)
+            return false;
+        int next = current + (dy > 0 ? 1 : -1);
+        if (next < 0)
+            next = m_tiles.size() - 1;
+        if (next >= m_tiles.size())
+            next = 0;
+        return select(next);
+    }
+
+    // Map mode: pick the nearest tile in the wanted direction, which handles
+    // irregular spacing far better than moving by a fixed index step.
+    const QRectF from = m_tiles.at(current).rect;
+    const QPointF origin = from.center();
+    int best = -1;
+    qreal bestDistance = 0.0;
+
+    for (int i = 0; i < m_tiles.size(); ++i) {
+        if (i == current)
+            continue;
+        const QPointF other = m_tiles.at(i).rect.center();
+        const qreal ddx = other.x() - origin.x();
+        const qreal ddy = other.y() - origin.y();
+
+        // Must be in the pressed direction.
+        if (dx > 0 && ddx <= 0.0)
+            continue;
+        if (dx < 0 && ddx >= 0.0)
+            continue;
+        if (dy > 0 && ddy <= 0.0)
+            continue;
+        if (dy < 0 && ddy >= 0.0)
+            continue;
+
+        // Weight the off-axis distance so a tile directly ahead beats a nearer
+        // one diagonally off to the side.
+        const qreal along = qAbs(dx != 0 ? ddx : ddy);
+        const qreal across = qAbs(dx != 0 ? ddy : ddx);
+        const qreal distance = along + across * 2.0;
+        if (best < 0 || distance < bestDistance) {
+            best = i;
+            bestDistance = distance;
+        }
+    }
+
+    if (best < 0) {
+        // Nothing further in that direction: wrap to the far side, which keeps
+        // arrow keys useful in a sparse layout.
+        for (int i = 0; i < m_tiles.size(); ++i) {
+            if (i == current)
+                continue;
+            const QPointF other = m_tiles.at(i).rect.center();
+            const qreal ddx = other.x() - origin.x();
+            const qreal ddy = other.y() - origin.y();
+            const qreal along = dx != 0 ? ddx * (dx > 0 ? 1 : -1)
+                                        : ddy * (dy > 0 ? 1 : -1);
+            const qreal across = dx != 0 ? qAbs(ddy) : qAbs(ddx);
+            const qreal distance = -along + across * 2.0;
+            if (best < 0 || distance < bestDistance) {
+                best = i;
+                bestDistance = distance;
+            }
+        }
+    }
+
+    if (best < 0)
+        return false;
+    return select(best);
+}
+
+bool LayoutView::clearSelection()
+{
+    if (m_selectedPath.isEmpty())
+        return false;
+    m_selectedPath.clear();
+    emit entrySelected(QString());
+    emit viewChanged();
+    viewport()->update();
+    return true;
+}
+
+bool LayoutView::activateSelection()
+{
+    if (m_selectedPath.isEmpty())
+        return false;
+    emit entryActivated(m_selectedPath);
+    return true;
+}
+
+void LayoutView::keyPressEvent(QKeyEvent *event)
+{
+    switch (event->key()) {
+    case Qt::Key_Left:   if (moveSelection(-1, 0)) { event->accept(); return; } break;
+    case Qt::Key_Right:  if (moveSelection(1, 0))  { event->accept(); return; } break;
+    case Qt::Key_Up:     if (moveSelection(0, -1)) { event->accept(); return; } break;
+    case Qt::Key_Down:   if (moveSelection(0, 1))  { event->accept(); return; } break;
+    case Qt::Key_Return:
+    case Qt::Key_Enter:
+        if (activateSelection()) { event->accept(); return; }
+        break;
+    case Qt::Key_Escape:
+        if (clearSelection()) { event->accept(); return; }
+        break;
+    default:
+        break;
+    }
+    QAbstractScrollArea::keyPressEvent(event);
 }
 
 void LayoutView::paintEvent(QPaintEvent *)

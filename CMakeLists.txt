@@ -66,6 +66,10 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/e2e.cpp")
         e2e:tools/e2e.cpp                    # capture -> save -> reload -> lay out
         windowprobe:tools/windowprobe.cpp    # clicks every title-bar control
         regress:tools/regress.cpp            # regression checks for fixed flaws
+        filtercheck:tools/filtercheck.cpp    # kind-filter chips
+        keycheck:tools/keycheck.cpp          # keyboard navigation
+        sortcheck:tools/sortcheck.cpp        # list sorting
+        geomcheck:tools/geomcheck.cpp        # window geometry persistence
     )
     foreach(entry IN LISTS CAIRN_TOOLS)
         string(REPLACE ":" ";" parts "${entry}")

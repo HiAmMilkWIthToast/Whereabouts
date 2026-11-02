@@ -22,6 +22,10 @@ class LayoutView : public QAbstractScrollArea
 public:
     enum class Mode { Map, List };
 
+    // List ordering. Map mode is always positional, so this only applies to the
+    // list; the sort is kept across a mode switch so it is not lost on a toggle.
+    enum class Sort { Name, Size, Modified, Kind };
+
     explicit LayoutView(QWidget *parent = nullptr);
 
     void setSession(const Session &session);
@@ -31,6 +35,10 @@ public:
 
     void setKindFilter(const QHash<int, bool> &enabledByKind);
     void setSearch(const QString &text);
+
+    void setSort(Sort sort, bool descending = false);
+    Sort sort() const { return m_sort; }
+    bool sortDescending() const { return m_sortDescending; }
 
     QString selectedPath() const { return m_selectedPath; }
     QList<QString> visiblePaths() const;
@@ -46,6 +54,17 @@ public:
     void setZoom(qreal zoom);
     qreal zoom() const { return m_zoom; }
 
+    // Moves the selection by one tile in the given direction, wrapping at the
+    // edges, and reports the newly selected path. Returns false when there is
+    // nothing to move through. Arrow keys drive this.
+    bool moveSelection(int dx, int dy);
+
+    // Clears the selection. Returns true if something was selected.
+    bool clearSelection();
+
+    // Activates the current selection (the same thing a double-click does).
+    bool activateSelection();
+
 signals:
     void entryActivated(const QString &relativePath);
     void entrySelected(const QString &relativePath);
@@ -60,6 +79,12 @@ protected:
     void leaveEvent(QEvent *event) override;
     void wheelEvent(QWheelEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
+    void keyPressEvent(QKeyEvent *event) override;
+
+public:
+    // Scrolls the selected tile into view, if any. Public so the window can call
+    // it after programmatic selection.
+    void ensureSelectionVisible();
 
 private:
     struct Tile {
@@ -90,6 +115,8 @@ private:
     QVector<Tile> m_tiles;
     QHash<int, bool> m_kindFilter;
     QString m_search;
+    Sort m_sort = Sort::Name;
+    bool m_sortDescending = false;
     QString m_selectedPath;
     QString m_hoveredPath;
 

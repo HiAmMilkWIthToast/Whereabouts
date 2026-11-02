@@ -8,6 +8,7 @@
 
 #include <QApplication>
 #include <QClipboard>
+#include <QComboBox>
 #include <QCursor>
 #include <QDesktopServices>
 #include <QDir>
@@ -25,6 +26,8 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QSettings>
+#include <QGuiApplication>
+#include <QScreen>
 #include <QStackedWidget>
 #include <QUrl>
 #include <QVBoxLayout>
@@ -120,6 +123,19 @@ MainWindow::MainWindow(QWidget *parent)
 {
     setWindowTitle(QStringLiteral("Cairn"));
     resize(1040, 660);
+
+    // Restore the last size and position. Without a check the window could come
+    // back entirely off-screen after a monitor was unplugged, so the saved
+    // geometry is only used when it still lands on an attached screen.
+    const QByteArray saved = QSettings()
+        .value(QStringLiteral("window/libraryGeometry")).toByteArray();
+    if (!saved.isEmpty()) {
+        restoreGeometry(saved);
+        if (!geometryIsOnScreen()) {
+            resize(1040, 660);
+            move(80, 80);
+        }
+    }
 
     createTitleBar();
     auto *body = new QHBoxLayout;
@@ -290,7 +306,62 @@ QWidget *MainWindow::buildDetailPage()
     head->addWidget(exportButton, 0, Qt::AlignVCenter);
 
     root->addLayout(head);
-    root->addSpacing(12);
+
+    // ---- kind filter chips, only for the kinds this session actually holds
+    m_kindBar = new QWidget(page);
+    m_kindRow = new QHBoxLayout(m_kindBar);
+    m_kindRow->setContentsMargins(0, 8, 0, 0);
+    m_kindRow->setSpacing(5);
+    root->addWidget(m_kindBar);
+
+    // ---- sort control, only relevant to the list
+    m_sortBar = new QWidget(page);
+    auto *sortRow = new QHBoxLayout(m_sortBar);
+    sortRow->setContentsMargins(0, 6, 0, 0);
+    sortRow->setSpacing(6);
+
+    auto *sortLabel = new QLabel(QStringLiteral("SORT"), m_sortBar);
+    sortLabel->setObjectName(QStringLiteral("fieldLabel"));
+    sortRow->addWidget(sortLabel);
+
+    m_sortBox = new QComboBox(m_sortBar);
+    m_sortBox->setObjectName(QStringLiteral("field"));
+    m_sortBox->addItem(QStringLiteral("Name"), int(LayoutView::Sort::Name));
+    m_sortBox->addItem(QStringLiteral("Size"), int(LayoutView::Sort::Size));
+    m_sortBox->addItem(QStringLiteral("Modified"), int(LayoutView::Sort::Modified));
+    m_sortBox->addItem(QStringLiteral("Kind"), int(LayoutView::Sort::Kind));
+    m_sortBox->setFixedWidth(110);
+    m_sortBox->setFocusPolicy(Qt::NoFocus);
+    sortRow->addWidget(m_sortBox);
+
+    m_sortDir = new QPushButton(QStringLiteral("↑ Ascending"), m_sortBar);
+    m_sortDir->setObjectName(QStringLiteral("secondary"));
+    m_sortDir->setCursor(Qt::PointingHandCursor);
+    m_sortDir->setCheckable(true);
+    m_sortDir->setFocusPolicy(Qt::NoFocus);
+    m_sortDir->setFixedWidth(112);
+    sortRow->addWidget(m_sortDir);
+    sortRow->addStretch(1);
+    root->addWidget(m_sortBar);
+
+    connect(m_sortBox, &QComboBox::currentIndexChanged, this, [this](int index) {
+        if (!m_layout || !m_sortBox || !m_sortDir)
+            return;
+        const auto sort = LayoutView::Sort(m_sortBox->itemData(index).toInt());
+        m_layout->setSort(sort, m_sortDir->isChecked());
+    });
+    connect(m_sortDir, &QPushButton::toggled, this, [this](bool descending) {
+        if (!m_layout || !m_sortBox)
+            return;
+        // Keep the label honest about the direction actually in effect.
+        m_sortDir->setText(descending ? QStringLiteral("↓ Descending")
+                                      : QStringLiteral("↑ Ascending"));
+        const auto sort = LayoutView::Sort(
+            m_sortBox->currentData().toInt());
+        m_layout->setSort(sort, descending);
+    });
+
+    root->addSpacing(8);
 
     // ---- body: map | tree | inspector
     auto *body = new QHBoxLayout;
@@ -327,7 +398,13 @@ QWidget *MainWindow::buildDetailPage()
                                    : QStringLiteral("List"));
         m_layout->setMode(list ? LayoutView::Mode::List
                                : LayoutView::Mode::Map);
+        // Sorting only affects the list, so the control appears with it instead
+        // of sitting there doing nothing in map mode.
+        if (m_sortBar)
+            m_sortBar->setVisible(list);
     });
+    if (m_sortBar)
+        m_sortBar->setVisible(false);
     connect(exportButton, &QPushButton::clicked, this, &MainWindow::exportSession);
     connect(search, &QLineEdit::textChanged, this, [this](const QString &text) {
         m_layout->setSearch(text);
@@ -436,13 +513,94 @@ void MainWindow::applySession(const Session &session){
         m_find->clear();
 
     m_status->setSession(QStringLiteral("%1  ·  %2").arg(session.name, session.id));
-    m_status->setCounts(QStringLiteral("%1 items  ·  %2")
-                            .arg(session.entries.size())
-                            .arg(Theme::formatBytes(session.totalSize())));
+
+    // A new session holds a different set of kinds, so stale chips would filter
+    // on types that are no longer present. This also writes the status count, so
+    // it has to run last.
+    rebuildKindFilter();
     m_status->setState(session.livePositions ? QStringLiteral("live layout")
                                              : QStringLiteral("grid layout"),
                        session.livePositions);
     m_sidebar->setActive(m_openNav);
+}
+
+void MainWindow::rebuildKindFilter()
+{
+    if (!m_kindRow)
+        return;
+
+    // Clear the previous chips without leaking them.
+    while (QLayoutItem *item = m_kindRow->takeAt(0)) {
+        if (QWidget *w = item->widget()) {
+            w->hide();
+            w->setParent(nullptr);
+            delete w;
+        }
+        delete item;
+    }
+
+    m_kindEnabled.clear();
+
+    // Same order the inspector uses, so the two panels agree.
+    static const Kind kOrder[] = {Kind::Folder,   Kind::Archive, Kind::Executable,
+                                  Kind::Document, Kind::Image,   Kind::Code,
+                                  Kind::Audio,    Kind::Video,   Kind::Shortcut,
+                                  Kind::Other};
+    QList<Kind> present;
+    for (Kind kind : kOrder) {
+        if (m_current.countOf(kind) > 0)
+            present.append(kind);
+    }
+
+    // With fewer than two kinds there is nothing worth filtering, so the row
+    // stays hidden rather than offering a single useless chip.
+    if (present.size() < 2) {
+        m_kindBar->setVisible(false);
+        m_layout->setKindFilter(QHash<int, bool>());
+        return;
+    }
+    m_kindBar->setVisible(true);
+
+    auto addChip = [this](const QString &text, int kindValue) {
+        auto *chip = new QPushButton(text, m_kindBar);
+        chip->setObjectName(QStringLiteral("filterChip"));
+        chip->setCursor(Qt::PointingHandCursor);
+        chip->setCheckable(true);
+        chip->setChecked(true);
+        chip->setFocusPolicy(Qt::NoFocus);
+        m_kindRow->addWidget(chip);
+        // Only switched-off kinds are recorded; an absent kind counts as on.
+        connect(chip, &QPushButton::toggled, this, [this, kindValue](bool on) {
+            m_kindEnabled.insert(kindValue, on);
+            applyKindFilter();
+        });
+    };
+
+    for (Kind kind : present)
+        addChip(QStringLiteral("%1 %2").arg(kindName(kind)).arg(m_current.countOf(kind)),
+                int(kind));
+    m_kindRow->addStretch(1);
+
+    applyKindFilter();
+}
+
+void MainWindow::applyKindFilter()
+{
+    // Everything on means no filter at all, which is also the cheaper path.
+    bool allOn = true;
+    for (auto it = m_kindEnabled.constBegin(); it != m_kindEnabled.constEnd(); ++it) {
+        if (!it.value()) {
+            allOn = false;
+            break;
+        }
+    }
+    m_layout->setKindFilter(allOn ? QHash<int, bool>() : m_kindEnabled);
+
+    const int shown = m_layout->visiblePaths().size();
+    m_status->setCounts(QStringLiteral("%1 of %2 items  ·  %3")
+                            .arg(shown)
+                            .arg(m_current.entries.size())
+                            .arg(Theme::formatBytes(m_current.totalSize())));
 }
 
 void MainWindow::openSessionById(const QString &id)
@@ -503,6 +661,25 @@ QString MainWindow::runSnapshotDialog(bool firstRun)
 void MainWindow::newSnapshot()
 {
     runSnapshotDialog(false);
+}
+
+bool MainWindow::geometryIsOnScreen() const
+{
+    const QRect frame = frameGeometry();
+    for (const QScreen *screen : QGuiApplication::screens()) {
+        // Require a decent overlap rather than any intersection: a window with
+        // one pixel on screen is as good as lost.
+        const QRect hit = screen->availableGeometry().intersected(frame);
+        if (hit.width() > 120 && hit.height() > 80)
+            return true;
+    }
+    return false;
+}
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    QSettings().setValue(QStringLiteral("window/libraryGeometry"), saveGeometry());
+    ChromeWindow::closeEvent(event);
 }
 
 void MainWindow::keyPressEvent(QKeyEvent *event)

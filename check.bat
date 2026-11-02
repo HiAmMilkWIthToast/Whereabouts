@@ -6,6 +6,10 @@ rem   check.bat e2e        capture -> save -> reload -> lay out
 rem   check.bat windows    every title-bar control and the shortcuts
 rem   check.bat capture    prints what a real capture of this machine recorded
 rem   check.bat regress    regression checks for previously fixed flaws
+rem   check.bat filter     kind-filter chips
+rem   check.bat keys       keyboard navigation
+rem   check.bat sort       list sorting
+rem   check.bat geom       window geometry persistence
 setlocal
 
 set "QT_DIR=C:/Qt/6.12.0/mingw_64"
@@ -34,10 +38,18 @@ if "%ONLY%"=="" call :run e2e
 if "%ONLY%"=="" call :run windowprobe
 if "%ONLY%"=="" call :run capturecheck
 if "%ONLY%"=="" call :run regress
+if "%ONLY%"=="" call :run filtercheck
+if "%ONLY%"=="" call :run keycheck
+if "%ONLY%"=="" call :run sortcheck
+if "%ONLY%"=="" call :run geomcheck
 if /i "%ONLY%"=="e2e"     call :run e2e
 if /i "%ONLY%"=="windows" call :run windowprobe
 if /i "%ONLY%"=="capture" call :run capturecheck
 if /i "%ONLY%"=="regress" call :run regress
+if /i "%ONLY%"=="filter" call :run filtercheck
+if /i "%ONLY%"=="keys" call :run keycheck
+if /i "%ONLY%"=="sort" call :run sortcheck
+if /i "%ONLY%"=="geom" call :run geomcheck
 
 if %FAILED% neq 0 (
   echo.
