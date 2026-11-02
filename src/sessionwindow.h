@@ -3,6 +3,8 @@
 #include "chrome.h"
 #include "sessionmodel.h"
 
+class FolderWatcher;
+
 // A window that shows a session and nothing else.
 //
 // The point of the separate window is that it can be kept open on a second
@@ -23,6 +25,11 @@ protected:
     void keyPressEvent(QKeyEvent *event) override;
 
 private:
+    // Re-scans the folder and refreshes the view, keeping the snapshot's
+    // identity. Same job as the library window's handler of the same name.
+    void onFolderChanged();
+    void updateLiveState();
+
     Session m_session;
     class LayoutView *m_layout = nullptr;
     class Inspector *m_inspector = nullptr;
@@ -30,4 +37,9 @@ private:
     class QLabel *m_meta = nullptr;
     class QLineEdit *m_search = nullptr;
     class StatusBar *m_status = nullptr;
+
+    FolderWatcher *m_watcher = nullptr;
+    // Rebuilding the view touches widgets, and a change raised while that
+    // happens must not start a second scan on top of the first.
+    bool m_applyingLive = false;
 };

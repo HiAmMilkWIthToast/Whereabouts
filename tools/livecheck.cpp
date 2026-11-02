@@ -19,6 +19,7 @@
 #include "mainwindow.h"
 #include "sessionmodel.h"
 #include "sessionstore.h"
+#include "sessionwindow.h"
 
 static QTextStream out(stdout);
 static int failures = 0;
@@ -164,6 +165,62 @@ int main(int argc, char *argv[])
         check(view->visiblePaths().size() == 2,
               QStringLiteral("a deleted file disappears (%1)")
                   .arg(view->visiblePaths().size()));
+    }
+
+    // ------------------------------------- the viewer window follows it too
+    {
+        out << "\n== a session in its own window follows the folder ==\n";
+
+        QTemporaryDir viewerDir;
+        const QString viewerRoot = viewerDir.path();
+        writeFile(viewerRoot + QStringLiteral("/one.txt"), "1");
+        writeFile(viewerRoot + QStringLiteral("/two.txt"), "2");
+
+        // The viewer loads from a saved file rather than from memory, which is
+        // the whole point of it: a handle on the command line has to work.
+        Session saved = SessionStore::capture(viewerRoot);
+        QString error;
+        const bool wrote = SessionStore::save(saved, &error);
+        check(wrote, QStringLiteral("session saved for the viewer to open (%1)")
+                         .arg(wrote ? QStringLiteral("ok") : error));
+
+        SessionWindow viewer;
+        viewer.resize(900, 600);
+        const bool opened = viewer.showSession(saved.id);
+        check(opened, QStringLiteral("viewer opened the saved session"));
+        pump(300);
+
+        auto *view = viewer.findChild<LayoutView *>();
+        check(view != nullptr, QStringLiteral("viewer has a layout view"));
+        if (view) {
+            const int before = view->visiblePaths().size();
+            check(before == 2, QStringLiteral("two items to begin with (%1)").arg(before));
+
+            writeFile(viewerRoot + QStringLiteral("/three.zip"), "3");
+            pump(1200);
+
+            const int after = view->visiblePaths().size();
+            check(after == 3,
+                  QStringLiteral("a new file appears in the viewer (%1 -> %2)")
+                      .arg(before).arg(after));
+            check(view->visiblePaths().contains(QStringLiteral("three.zip")),
+                  QStringLiteral("and it is the item that was added"));
+
+            // The handle and the capture time identify the snapshot, so
+            // following the folder must not quietly change either.
+            check(viewer.sessionId() == saved.id,
+                  QStringLiteral("the handle is unchanged (%1)").arg(viewer.sessionId()));
+
+            QFile::remove(viewerRoot + QStringLiteral("/two.txt"));
+            pump(1200);
+            check(!view->visiblePaths().contains(QStringLiteral("two.txt")),
+                  QStringLiteral("the deleted file is gone from the viewer"));
+            check(view->visiblePaths().size() == 2,
+                  QStringLiteral("and the count follows it (%1)")
+                      .arg(view->visiblePaths().size()));
+        }
+
+        QFile::remove(SessionStore::pathForId(saved.id));
     }
 
     // ----------------------------------------------- a vanished folder is safe

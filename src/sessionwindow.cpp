@@ -1,4 +1,5 @@
 #include "sessionwindow.h"
+#include "folderwatch.h"
 #include "inspector.h"
 #include "layoutview.h"
 #include "sessionstore.h"
@@ -101,6 +102,14 @@ SessionWindow::SessionWindow(QWidget *parent)
         QApplication::clipboard()->setText(text);
     });
 
+    // A viewer is often the window left open on a second screen while the
+    // folder is being tidied in Explorer, so it follows its folder the same way
+    // the library window does. Nothing is written back: the .session file stays
+    // the capture it was.
+    m_watcher = new FolderWatcher(this);
+    connect(m_watcher, &FolderWatcher::folderChanged, this,
+            &SessionWindow::onFolderChanged);
+
     title->setSubtitle(QStringLiteral("session viewer"));
     m_status->setState(QStringLiteral("no session"));
     m_status->setHint(QStringLiteral("Ctrl+F find  ·  Ctrl+0 fit"));
@@ -133,13 +142,83 @@ bool SessionWindow::showSession(const QString &idOrPath){
     m_inspector->setSession(session);
     m_inspector->setEntry(nullptr);
 
-    m_status->setState(session.livePositions ? QStringLiteral("live layout")
-                                             : QStringLiteral("grid layout"),
-                       session.livePositions);
-    m_status->setSession(QStringLiteral("%1 items").arg(session.entries.size()));
-    m_status->setCounts(Theme::formatBytes(session.totalSize()));
+    updateLiveState();
     show();
+
+    if (m_watcher)
+        m_watcher->watch(session.rootPath);
     return true;
+}
+
+void SessionWindow::onFolderChanged()
+{
+    if (m_session.id.isEmpty())
+        return;
+
+    // A missing root is the normal result of the folder being deleted or
+    // renamed away. Re-scanning it would yield an empty session and wipe what
+    // is on screen, so the map is left alone and the footer says what happened.
+    if (!QFileInfo(m_session.rootPath).isDir()) {
+        updateLiveState();
+        return;
+    }
+
+    if (m_applyingLive)
+        return;
+    m_applyingLive = true;
+
+    Session updated = SessionStore::capture(m_session.rootPath);
+
+    // The same snapshot following its folder, not a new one: a fresh capture
+    // mints an id and a timestamp, and both have to stay as they were.
+    updated.id = m_session.id;
+    updated.name = m_session.name;
+    updated.capturedAt = m_session.capturedAt;
+
+    m_session = updated;
+
+    m_meta->setText(
+        QStringLiteral("%1  ·  %2  ·  %3")
+            .arg(updated.id,
+                 updated.summary(),
+                 updated.capturedAt.toString(QStringLiteral("MMM d, yyyy  HH:mm"))));
+
+    // A change elsewhere in the folder must not clear the inspector under the
+    // user, so the selection is restored afterwards. setSession() has to run
+    // first, because it drops back to the summary panel.
+    const QString keep = m_layout->selectedPath();
+    // resetView=false: the same folder refreshed, so the zoom and pan survive.
+    m_layout->setSession(updated, false);
+    m_inspector->setSession(updated);
+
+    if (!keep.isEmpty()) {
+        for (const Entry &entry : m_session.entries) {
+            if (entry.relativePath == keep) {
+                m_inspector->setEntry(&entry);
+                break;
+            }
+        }
+    }
+
+    updateLiveState();
+    m_applyingLive = false;
+}
+
+void SessionWindow::updateLiveState()
+{
+    if (m_session.id.isEmpty())
+        return;
+
+    if (!QFileInfo(m_session.rootPath).isDir()) {
+        m_status->setState(QStringLiteral("folder is gone"), true);
+        return;
+    }
+
+    m_status->setState(m_session.livePositions ? QStringLiteral("live layout")
+                                               : QStringLiteral("grid layout"),
+                       m_session.livePositions);
+    m_status->setSession(QStringLiteral("%1 items").arg(m_session.entries.size()));
+    m_status->setCounts(Theme::formatBytes(m_session.totalSize()));
 }
 
 void SessionWindow::keyPressEvent(QKeyEvent *event)
