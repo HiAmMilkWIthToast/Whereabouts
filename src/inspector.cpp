@@ -1,4 +1,5 @@
 #include "inspector.h"
+#include "icontextbutton.h"
 #include "entryicon.h"
 #include "theme.h"
 
@@ -205,10 +206,10 @@ void Inspector::buildSummary(const Session &session)
     addRow(m_body, QStringLiteral("TOTAL SIZE"), Theme::formatBytes(session.totalSize()));
     addRow(m_body, QStringLiteral("ROOT"), session.rootPath, true);
 
-    auto *reveal = new QPushButton(QStringLiteral("Open folder"), m_bodyHost);
+    auto *reveal = new IconTextButton(Icons::Id::Folder,
+                                      QStringLiteral("Open folder"), m_bodyHost);
     reveal->setObjectName(QStringLiteral("secondary"));
-    reveal->setCursor(Qt::PointingHandCursor);
-    connect(reveal, &QPushButton::clicked, this, [this] {
+    connect(reveal, &IconTextButton::clicked, this, [this] {
         if (!m_session.rootPath.isEmpty())
             emit openFolderRequested(m_session.rootPath);
     });
@@ -263,18 +264,18 @@ void Inspector::buildEntry(const Session &session, const Entry &entry)
     auto *buttons = new QHBoxLayout;
     buttons->setSpacing(6);
 
-    auto *reveal = new QPushButton(QStringLiteral("Reveal"), m_bodyHost);
+    auto *reveal = new IconTextButton(Icons::Id::Folder,
+                                      QStringLiteral("Reveal"), m_bodyHost);
     reveal->setObjectName(QStringLiteral("secondary"));
-    reveal->setCursor(Qt::PointingHandCursor);
-    connect(reveal, &QPushButton::clicked, this, [this, entry] {
+    connect(reveal, &IconTextButton::clicked, this, [this, entry] {
         emit revealRequested(entry.name);
     });
     buttons->addWidget(reveal);
 
-    auto *copy = new QPushButton(QStringLiteral("Copy path"), m_bodyHost);
+    auto *copy = new IconTextButton(Icons::Id::Link,
+                                    QStringLiteral("Copy path"), m_bodyHost);
     copy->setObjectName(QStringLiteral("secondary"));
-    copy->setCursor(Qt::PointingHandCursor);
-    connect(copy, &QPushButton::clicked, this, [this, session, entry] {
+    connect(copy, &IconTextButton::clicked, this, [this, session, entry] {
         emit copyPathRequested(session.rootPath + QLatin1Char('/') + entry.relativePath);
     });
     buttons->addWidget(copy);

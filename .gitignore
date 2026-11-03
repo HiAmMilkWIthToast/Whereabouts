@@ -10,3 +10,6 @@ dist/
 # release/ is deliberately NOT ignored: it is the published, runnable copy of
 # the app and must contain every DLL it needs. A blanket "*.dll" rule here once
 # dropped release/platforms/qwindows.dll, which makes the exe fail to start.
+
+# Local build settings: the project address the title-bar mark opens.
+local.cmake

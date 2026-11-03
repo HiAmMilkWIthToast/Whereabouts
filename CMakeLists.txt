@@ -1,10 +1,13 @@
 cmake_minimum_required(VERSION 3.16)
 project(Cairn VERSION 1.0 LANGUAGES CXX)
 
-# The address the mark opens. Deliberately unset by default: the build should
-# not name an account, and an unset address makes the mark an inert logo rather
-# than a link to somewhere arbitrary.
+# The address the mark opens. Empty means the mark is a plain logo.
+# local.cmake is not tracked, so a build can name its own address without
+# putting that address in the repository.
 set(CAIRN_PROJECT_URL "" CACHE STRING "Address the title-bar mark opens")
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/local.cmake")
+    include("${CMAKE_CURRENT_SOURCE_DIR}/local.cmake")
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

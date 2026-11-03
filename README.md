@@ -1,125 +1,122 @@
 # Cairn
 
-A dark, compact desktop app that records where everything sits in a folder.
+Cairn records where things sit in a folder, so you can look at the arrangement
+later.
 
-A cairn is a stack of stones that marks a place — that is all this does: it
-remembers the *arrangement* of a folder so you can look at it later.
-
-The mark in the top-left corner opens the project page. Pass it at configure
-time with `-DCAIRN_PROJECT_URL=https://example.com/your-project`; with none
-given the mark simply is not a link.
-
-## What it is, and what it is not
-
-A Cairn session records, for every item in a folder:
-
-- name, type, size, modified time
-- the item's position
-- for shortcuts and symlinks, what they point at
-- for the desktop, the **real** icon coordinates read from Explorer
-
-It does **not** copy any file. A `.session` file holds a few kilobytes of
-metadata — a map, not a backup. No file contents are ever read or stored.
+It saves a `.session` file: names, sizes, modified times, and the position of
+each item. It never copies a file. A snapshot is a few kilobytes.
 
 ## Running it
 
-`release\` is a self-contained build for Windows x64. Run `release\cairn.exe`
-directly — it needs no Qt install and nothing else on the machine:
+`release\cairn.exe` is a self-contained Windows x64 build. Nothing needs to be
+installed.
 
-    cairn.exe                      # the library
-    cairn.exe -o desktop-1k4f2a    # a saved snapshot
+    cairn.exe                      the library
+    cairn.exe -o desktop-1k4f2a    a saved snapshot
+    cairn.exe -o C:\path\x.session a session file
 
-The folder holds the executable, the Qt and MinGW runtime DLLs, and
-`platforms\qwindows.dll`. That last one is not optional: Qt refuses to start
-without it, and it must sit in a `platforms` folder next to the exe.
+You can also drop a `.session` file onto the executable.
+
+Sessions live in `%APPDATA%\Cairn\Cairn\sessions`, not next to the executable.
+
+The folder around the exe matters. `platforms\qwindows.dll` must stay where it
+is, or Qt refuses to start.
 
 ## Using it
 
-On first launch it asks which folder to snapshot. Pick the desktop and it reads
-the true icon positions from the shell; pick any other folder and it lays the
-items out on a grid, because those have no on-screen positions to record.
+The first launch asks which folder to snapshot. Choose the desktop and it reads
+the real icon positions from Explorer. Choose anything else and the items are
+laid out on a grid, because there are no on-screen positions to record.
 
-Each snapshot gets a handle such as `desktop-1k4f2a`. The main window lists the
-snapshots you have taken, and any of them can be opened in its own window:
+Each snapshot gets a handle like `desktop-1k4f2a`. The main window lists them;
+each opens in its own window.
 
-    cairn -o desktop-1k4f2a        # by handle
-    cairn -o C:\path\to\x.session  # by file
-
-Drag a `.session` file onto the executable, or pass it as the first argument.
-That is the whole sharing story: send someone the small file.
-
-Sessions are kept under your application data folder, not beside the executable:
-
-    %APPDATA%\Cairn\Cairn\sessions
-
-The search box above the list filters by name as you type and suggests matching
-sessions; `Ctrl+F` puts the cursor in it. In a viewer it searches the items in
-that session instead.
+The search box filters as you type and suggests matching sessions. `Ctrl+F`
+puts the cursor in it. Inside a viewer it searches that session's items.
 
 ## Keys
 
 | Key | Action |
 | --- | --- |
 | `Ctrl+N` | New snapshot (library) |
-| `Ctrl+O` | Open a session by its handle (library) |
-| `Ctrl+F` | Focus the item search |
+| `Ctrl+O` | Open a session by handle (library) |
+| `Ctrl+F` | Focus the search box |
 | `Ctrl+0` or `Ctrl+=` | Fit the map to the window (viewer) |
-| Arrow keys | Move the selection between items, wrapping at the edges |
-| `Enter` | Activate the selected item |
-| `Esc` | Clear the selection, or go back to the session list |
+| Arrows | Move the selection, wrapping at the edges |
+| `Enter` | Open the selected item |
+| `Esc` | Clear the selection, or return to the list |
 
-Closing a window ends the app: the library and a lone viewer are each the whole
-program. Minimize, maximize/restore and close live on the title bar of every
-window, and the maximize glyph switches to Restore while the window is maximized.
+Closing a window closes the program. The library and a lone viewer are each the
+whole application.
 
 ## Filtering and sorting
 
-Above the map, one chip per kind of item in the session shows its count. Click a
-chip to hide that kind; click it again to bring it back.
+One chip per kind of item, with a count, sits above the map. Click a chip to
+hide that kind; click again to show it.
 
-In list mode a sort control appears: Name, Size, Modified or Kind, ascending or
-descending. Folders always sort ahead of files.
+List mode adds a sort control: Name, Size, Modified or Kind, in either
+direction. Folders always come before files.
 
-Each of these is covered by a check tool; see [Checking it](#checking-it).
+## The map
+
+Desktop coordinates come from Explorer, so the snapshot looks like the desktop
+did.
+
+Empty rows and columns are collapsed before drawing. Without that, one icon
+dragged into a far corner shrinks every other tile until it is unreadable.
+Order and adjacency survive; absolute distance does not. The inspector always
+shows the exact recorded position.
+
+Only a few kinds get their own glyph; the rest fall back to a plain document.
+A folder's size totals everything beneath it, but the walk stops after 4000
+files, so on a large tree the figure is a lower bound.
 
 ## Building
 
-Requires Qt 6 and a C++17 compiler. On Windows with the Qt MinGW kit:
+Needs Qt 6 and a C++17 compiler. On Windows with the Qt MinGW kit:
 
-    build.bat           # builds build\cairn.exe
-    build.bat deploy    # also stages the runnable copy in release\
+    build.bat           builds build\cairn.exe
+    build.bat deploy    also stages a runnable copy in release\
 
-`build.bat` expects Qt at `C:\Qt\6.12.0\mingw_64`; edit the paths at the top of
-the script for another install.
+`build.bat` expects Qt at `C:\Qt\6.12.0\mingw_64`. Change the four paths at the
+top of the script for a different install.
 
-The executable icon is committed rather than built: `res\cairn.ico` is compiled
-in through `res\cairn.rc`, so Explorer, the taskbar and Alt-Tab show it without
-the app having to start first. It is drawn by the same code that paints the mark
-in the title bar, so the two cannot disagree -- regenerate it after changing the
-mark:
-
-    cmake --build build --target cairn_icotool
-    build\tools\cairn_icotool.exe
-
-That writes `res\cairn.ico` (seven sizes, 16 through 256) and
-`res\cairn-256.png`. Below 32px the icon uses fewer stones, because the full
-mark's gaps fall inside a single pixel and the stack merges into one blob.
-
-Or with CMake directly:
+Or plain CMake:
 
     cmake -S . -B build -DCMAKE_PREFIX_PATH=C:/Qt/6.12.0/mingw_64
     cmake --build build
 
-The title-bar mark opens a project page only if the build is given an address:
+`build.bat` and `check.bat` exist because the source is the thing you build;
+`release/` is only the result of running them. Editing source does not change
+the shipped exe until you rebuild and deploy.
 
-    cmake -S . -B build -DCAIRN_PROJECT_URL=https://example.com/your-project
+### The address on the mark
 
-With none given the mark is a plain logo and opens nothing.
+The gold mark in the title bar opens a project page when the build is given an
+address. Put one in `local.cmake` beside `CMakeLists.txt`:
+
+    set(CAIRN_PROJECT_URL "https://github.com/you/your-project")
+
+That file is ignored by git, so the address stays out of the repository. With
+no address the mark is a plain logo: no hand cursor, no tooltip, no link.
+
+### The executable icon
+
+`res\cairn.ico` is committed and compiled in through `res\cairn.rc`, so
+Explorer and the taskbar show it before the app starts. The same code draws the
+mark in the title bar, so the two cannot drift apart. After changing the mark:
+
+    cmake --build build --target cairn_icotool
+    build\tools\cairn_icotool.exe
+
+That writes `res\cairn.ico` in seven sizes, 16 to 256, and `res\cairn-256.png`.
+Below 32px the icon drops some stones, because the gaps fall inside a single
+pixel and the stack turns into a blob.
 
 ## Checking it
 
-`check.bat` builds and runs every check tool. With no argument it runs all of
-them; give it a name to run one:
+`check.bat` builds and runs every check tool. No argument runs them all; a name
+runs one.
 
 | Command | Covers |
 | --- | --- |
@@ -127,46 +124,32 @@ them; give it a name to run one:
 | `check.bat keys` | keyboard navigation |
 | `check.bat sort` | list sorting |
 | `check.bat geom` | window geometry persistence |
-| `check.bat suggest` | the executable icon and the brand tone |
-| `check.bat brand` | the clickable, animated mark |
-| `check.bat icons` | every icon id has artwork, and buttons retint on hover |
+| `check.bat suggest` | the executable icon and the brand colour |
+| `check.bat brand` | the mark, and the address it opens |
+| `check.bat icons` | every icon id has artwork; buttons retint on hover |
 
-Each check prints `PASS` or `FAIL` per assertion and exits non-zero on failure,
-so the suite is usable from a script.
+Each check prints `PASS` or `FAIL` and exits non-zero on failure, so the suite
+works from a script.
 
-## Layout of the code
+## Code layout
 
 | Path | Purpose |
 | --- | --- |
-| `src/theme.*` | colours, metrics, the single stylesheet |
-| `src/icons.*` | inline SVG icons, rasterised and tinted at paint time |
+| `src/theme.*` | colours, metrics, the stylesheet |
+| `src/icons.*` | SVG icons, rasterised and tinted when painted |
 | `src/icontextbutton.*` | a button that paints its own glyph and label |
-| `src/filterchip.*` | the kind-filter pill, also self-painted |
+| `src/filterchip.*` | the kind-filter pill |
 | `src/chrome.*` | frameless window, title bar, sidebar, status bar |
-| `res/` | the compiled-in icon, and the resource script that embeds it |
-| `src/sessionmodel.*` | `Entry`, `Session`, type detection, JSON |
-| `src/desktoppositions.*` | real Explorer icon positions via the shell view |
-| `src/sessionstore.*` | capture, save, load, the session library |
+| `src/sessionmodel.*` | `Entry`, `Session`, kind detection, JSON |
+| `src/desktoppositions.*` | Explorer icon positions via the shell view |
+| `src/sessionstore.*` | capture, save, load, the library |
 | `src/layoutview.*` | the map and the list |
 | `src/inspector.*` | the right-hand detail panel |
-| `src/onboarding.*` | the first-run "snapshot a folder" dialog |
+| `src/onboarding.*` | the first-run dialog |
 | `src/mainwindow.*` | the library and the detail page |
-| `src/sessionwindow.*` | a single session in its own window |
-
-## Notes on the layout map
-
-Desktop coordinates come from Explorer, so a snapshot looks like the desktop did.
-Empty columns and rows are collapsed before drawing: a single icon dragged to the
-far corner would otherwise shrink every other tile to the point of being
-unreadable. Order and adjacency survive, absolute distance does not — and the
-inspector always shows the exact recorded position of the selected item.
-
-Icons are only generated for a handful of kinds; the rest fall back to a generic
-document glyph. A folder's size is the total of everything beneath it, not just
-the files sitting directly inside -- but the walk stops after 4000 files, so a
-snapshot of a deep tree is still quick. On a folder that large the number is a
-lower bound, not an exact total.
+| `src/sessionwindow.*` | one session in its own window |
+| `res/` | the icon and the script that embeds it |
 
 ## Licence
 
-MIT. See [LICENSE](LICENSE) — use it, change it, ship it.
+MIT. See [LICENSE](LICENSE).
