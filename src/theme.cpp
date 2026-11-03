@@ -5,8 +5,6 @@
 
 namespace {
 
-// Cached because paintEvent and the stylesheet builder both read it; QSettings
-// lookups are comparatively slow.
 QColor &accentCache()
 {
     static QColor cached = []() {
@@ -23,7 +21,7 @@ QColor blend(const QColor &a, const QColor &b, qreal t)
     return Theme::lerpColor(a, b, t);
 }
 
-} // namespace
+}
 
 namespace Theme {
 
@@ -42,8 +40,6 @@ QString accentName()
     return accentCache().name();
 }
 
-// Darkened toward the panel colour rather than made transparent, so borders
-// still look like a colour against the near-black surfaces.
 QString accentDimName()
 {
     return blend(accentCache(), QColor(QStringLiteral("#14161a")), 0.6).name();
@@ -56,7 +52,7 @@ QString accentHoverName()
 
 QString accentContrastName()
 {
-    // Text drawn on top of an accent fill.
+
     return accentCache().lightness() > 170 ? QStringLiteral("#0d0f12")
                                           : QStringLiteral("#ffffff");
 }
@@ -76,9 +72,7 @@ QString formatBytes(qint64 bytes)
 
 QString buildStyleSheet()
 {
-    // Placeholders instead of raw values so one accent change repaints the
-    // whole app. Dim/hover must be substituted before the plain token, since
-    // "%ACCENT_DIM%" would otherwise leave a dangling suffix.
+
     static const char *kTemplate = R"(
 * {
     font-family: "Segoe UI", "Inter", "Microsoft YaHei", sans-serif;
@@ -611,4 +605,4 @@ QCheckBox::indicator:checked {
     return sheet;
 }
 
-} // namespace Theme
+}

@@ -1,5 +1,4 @@
-// Exercises the real capture path against this machine's desktop and a plain
-// folder, and prints what was recorded. Development helper only.
+
 #include <QApplication>
 #include <QCoreApplication>
 #include <QDir>
@@ -50,8 +49,6 @@ int main(int argc, char *argv[])
     app.setApplicationName(QStringLiteral("CairnCheck"));
     app.setOrganizationName(QStringLiteral("CairnCheck"));
 
-    // Anything that makes this check useless has to reach the exit code, or
-    // check.bat reports success for a run that proved nothing.
     bool failed = false;
 
     out() << "== desktop ==\n";
@@ -80,10 +77,7 @@ int main(int argc, char *argv[])
               ? "match" : "MISMATCH") << "\n";
 
     out() << "\n== plain folder ==\n";
-    // A real folder that is not the desktop, so the computed-grid path runs.
-    // The path is baked in at configure time rather than guessed relative to the
-    // binary: this tool lives in build\tools, and "../src" from there is an empty
-    // folder that looks like a successful capture of nothing.
+
     const QString folder = argc > 1
         ? QString::fromLocal8Bit(argv[1])
         : QStringLiteral(CAIRN_SAMPLE_DIR);
@@ -104,7 +98,6 @@ int main(int argc, char *argv[])
     for (const Session &session : all)
         out() << "  " << session.id << "  " << session.entries.size() << " items\n";
 
-    // Clean up the file this check created so it does not show up in the app.
     QFile::remove(path);
     out() << "\ncleanup     : removed " << path << "\n";
 

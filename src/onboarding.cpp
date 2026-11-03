@@ -30,7 +30,7 @@ QLabel *label(const QString &text, const QString &objectName, QWidget *parent)
     return l;
 }
 
-} // namespace
+}
 
 OnboardingDialog::OnboardingDialog(const QString &suggestedPath, bool firstRun,
                                    QWidget *parent)
@@ -48,7 +48,6 @@ OnboardingDialog::OnboardingDialog(const QString &suggestedPath, bool firstRun,
     root->setContentsMargins(22, 20, 22, 20);
     root->setSpacing(0);
 
-    // ---- header
     auto *head = new QHBoxLayout;
     head->setSpacing(11);
 
@@ -79,7 +78,6 @@ OnboardingDialog::OnboardingDialog(const QString &suggestedPath, bool firstRun,
     root->addLayout(head);
     root->addSpacing(18);
 
-    // ---- folder
     root->addWidget(label(QStringLiteral("FOLDER TO SNAPSHOT"),
                           QStringLiteral("fieldLabel"), this));
     root->addSpacing(5);
@@ -104,7 +102,6 @@ OnboardingDialog::OnboardingDialog(const QString &suggestedPath, bool firstRun,
 
     root->addSpacing(14);
 
-    // ---- name
     root->addWidget(label(QStringLiteral("SESSION NAME"),
                           QStringLiteral("fieldLabel"), this));
     root->addSpacing(5);
@@ -131,7 +128,6 @@ OnboardingDialog::OnboardingDialog(const QString &suggestedPath, bool firstRun,
 
     root->addSpacing(18);
 
-    // ---- actions
     auto *actions = new QHBoxLayout;
     actions->setSpacing(8);
     actions->addStretch(1);
@@ -164,9 +160,7 @@ OnboardingDialog::OnboardingDialog(const QString &suggestedPath, bool firstRun,
 QString OnboardingDialog::chosenPath() const
 {
     const QString typed = m_pathEdit->text().trimmed();
-    // Keep "nothing typed" as an empty string. QDir::cleanPath turns it into
-    // ".", which then passes the isDir() test and silently snapshots whatever
-    // directory the process happens to be running from.
+
     if (typed.isEmpty())
         return QString();
     return QDir::cleanPath(typed);
@@ -220,8 +214,6 @@ void OnboardingDialog::validate()
         m_capture->setEnabled(true);
     }
 
-    // Chip styling is driven by the object name, so both labels need a repolish
-    // for the change to take effect.
     m_pathStatus->style()->unpolish(m_pathStatus);
     m_pathStatus->style()->polish(m_pathStatus);
 }

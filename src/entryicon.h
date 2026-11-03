@@ -5,8 +5,6 @@
 
 #include <QColor>
 
-// Which glyph represents an entry. Kept in one place so the tree, the map and
-// the inspector can never disagree about what a zip looks like.
 namespace EntryIcon {
 
 inline Icons::Id kindIcon(Kind kind)
@@ -31,4 +29,4 @@ inline QColor kindColor(Kind kind)
     return QColor(::kindColor(kind));
 }
 
-} // namespace EntryIcon
+}

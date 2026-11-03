@@ -1,4 +1,4 @@
-// Checks the search box's snapshot list. Development helper only.
+
 #include <QApplication>
 #include <QDir>
 #include <QFile>
@@ -54,8 +54,6 @@ static Session makeSession(const QString &id, const QString &name)
     return s;
 }
 
-// The popup is driven through the real text box, so the checks exercise the
-// path a person takes rather than calling the helper directly.
 static void type(QLineEdit *box, const QString &text)
 {
     box->setText(text);
@@ -79,8 +77,6 @@ int main(int argc, char *argv[])
     app.setApplicationName(QStringLiteral("CairnSuggestTest"));
     app.setOrganizationName(QStringLiteral("CairnSuggestTest"));
 
-    // Written into this app's own sessions folder, so the run never touches the
-    // user's library.
     const QStringList ids = {QStringLiteral("suggest-alpha"),
                              QStringLiteral("suggest-beta"),
                              QStringLiteral("suggest-gamma")};
@@ -156,8 +152,7 @@ int main(int argc, char *argv[])
             }
         }
         const QStringList offered = names(list);
-        // Both are sorted from the same source, so they must agree exactly; a
-        // mismatch would mean the popup is one refresh behind.
+
         check(offered == visible,
               QStringLiteral("same entries as the list (%1 vs %2)")
                   .arg(offered.size()).arg(visible.size()));
@@ -171,7 +166,6 @@ int main(int argc, char *argv[])
         check(none.value(0).contains(QStringLiteral("match"), Qt::CaseInsensitive),
               QStringLiteral("the placeholder says why (%1)").arg(none.value(0)));
 
-        // The placeholder must not be pickable: it carries no id.
         auto *model = qobject_cast<QStandardItemModel *>(list->model());
         check(model && model->item(0)->data(Qt::UserRole).toString().isEmpty(),
               QStringLiteral("the placeholder opens nothing"));
@@ -181,9 +175,7 @@ int main(int argc, char *argv[])
 
     out << "== the subtitle ellipsizes instead of being cut ==" << QLatin1Char(10);
     {
-        // The stored path is long and the page is not always wide. At the
-        // minimum window size the text used to run on under the search box and
-        // be clipped mid-word.
+
         auto *subtitle = window.findChild<QLabel *>(QStringLiteral("librarySubtitle"));
         check(subtitle != nullptr, QStringLiteral("the subtitle exists"));
         if (subtitle) {
@@ -195,7 +187,6 @@ int main(int argc, char *argv[])
             check(subtitle->toolTip() == full,
                   QStringLiteral("the whole path is available on hover"));
 
-            // Narrowing the window must shorten the text, not widen the header.
             window.resize(560, 620);
             QApplication::processEvents();
             const int narrowWidth = subtitle->width();
@@ -204,17 +195,12 @@ int main(int argc, char *argv[])
                       .arg(narrowWidth)
                       .arg(subtitle->fontMetrics().horizontalAdvance(full)));
 
-            // Widening gives back some of the text, though not necessarily all
-            // of it: this test's own path is longer than the shipped app's, and
-            // whether 900px is enough is a fact about the path, not a fault.
             window.resize(900, 620);
             QApplication::processEvents();
             check(subtitle->width() > narrowWidth,
                   QStringLiteral("widening gives it more room (%1 then %2)")
                       .arg(narrowWidth).arg(subtitle->width()));
 
-            // Push it wide enough that no path could be cut: the label must
-            // then take the room the layout offers rather than staying put.
             window.resize(1600, 620);
             QApplication::processEvents();
             check(subtitle->width() >= subtitle->fontMetrics().horizontalAdvance(full),
@@ -224,7 +210,6 @@ int main(int argc, char *argv[])
         }
     }
 
-
     out << "\n== picking one opens it ==\n";
     {
         type(box, QStringLiteral("gamma"));
@@ -233,7 +218,6 @@ int main(int argc, char *argv[])
               QStringLiteral("gamma is the only match (%1)")
                   .arg(model ? model->rowCount() : -1));
 
-        // Clicking the row is what a person does; drive the same signal.
         if (model && model->rowCount() == 1)
             emit list->clicked(model->index(0, 0));
         QApplication::processEvents();
@@ -242,8 +226,6 @@ int main(int argc, char *argv[])
               QStringLiteral("the search box is cleared after picking"));
         check(!list->isVisible(), QStringLiteral("the list closes after picking"));
 
-        // Opening moves the window to the detail page, which is where an opened
-        // snapshot lives; the library page is index 0.
         auto *stack = window.findChild<QStackedWidget *>(QStringLiteral("pages"));
         check(stack != nullptr, QStringLiteral("the page stack exists"));
         if (stack) {
@@ -255,11 +237,7 @@ int main(int argc, char *argv[])
 
     out << QLatin1Char(10) << "== the way back is gold, not grey ==" << QLatin1Char(10);
     {
-        // The button is the one control that leaves the snapshot, so it is
-        // styled apart from the neutral ghost buttons beside it.
-        // Found by object name rather than by label: IconTextButton paints its
-        // own text and keeps Qt's text() empty, so matching on text() silently
-        // found nothing once the button grew an icon.
+
         QPushButton *back = window.findChild<QPushButton *>(QStringLiteral("backLink"));
         check(back != nullptr, QStringLiteral("the Sessions button exists"));
         if (back) {
@@ -271,8 +249,6 @@ int main(int argc, char *argv[])
             check(sheet.contains(QStringLiteral("QPushButton#backLink")),
                   QStringLiteral("the stylesheet styles it"));
 
-            // The colour is parsed by the style sheet at paint time, so the
-            // widget's palette does not carry it; read the rule itself.
             int at = sheet.indexOf(QStringLiteral("QPushButton#backLink {"));
             check(at >= 0, QStringLiteral("the rule is findable"));
             if (at >= 0) {
@@ -285,7 +261,7 @@ int main(int argc, char *argv[])
                 check(m.hasMatch(), QStringLiteral("the rule sets a colour"));
                 if (m.hasMatch()) {
                     const QColor text(m.captured(1));
-                    // Gold: red leads, green follows, blue trails.
+
                     check(text.isValid() && text.red() > text.green()
                               && text.green() > text.blue(),
                           QStringLiteral("the text is a warm tone (%1)")
@@ -300,20 +276,16 @@ int main(int argc, char *argv[])
 
     out << QLatin1Char(10) << "== the logo is gold, and its file exists ==" << QLatin1Char(10);
     {
-        // The mark was drawn with the interactive accent, which made the logo
-        // read as another control. It has its own tone now.
+
         const QColor mark = Theme::brand();
         check(mark.red() > mark.green() && mark.green() > mark.blue(),
               QStringLiteral("the brand tone is warm (%1)").arg(mark.name()));
 
-        // The same colour the Sessions button uses, so the two agree.
         const QString sheet = Theme::buildStyleSheet();
         check(sheet.contains(mark.name(), Qt::CaseInsensitive),
               QStringLiteral("the stylesheet uses the same tone (%1)")
                   .arg(mark.name()));
 
-        // The committed icon files, which are what the resource compiles and
-        // what a person sees in Explorer.
         const QStringList files = {
             QStringLiteral(CAIRN_RES_DIR "/cairn.ico"),
             QStringLiteral(CAIRN_RES_DIR "/cairn-256.png"),
@@ -328,8 +300,7 @@ int main(int argc, char *argv[])
                   .arg(png.width()).arg(png.height()));
 
         if (!png.isNull()) {
-            // Somewhere in the middle of the tile there must be gold; a blank or
-            // monochrome icon would pass a mere "file exists" check.
+
             bool foundGold = false;
             for (int y = 0; y < png.height() && !foundGold; y += 2) {
                 for (int x = 0; x < png.width() && !foundGold; x += 2) {
@@ -346,7 +317,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    // Leave the machine as it was found.
     for (const QString &path : written)
         QFile::remove(path);
 

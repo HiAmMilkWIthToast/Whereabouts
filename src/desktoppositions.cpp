@@ -17,7 +17,6 @@ namespace {
 
 #ifdef Q_OS_WIN
 
-// RAII for COM pointers held only for the duration of one read.
 template <class T>
 struct ComPtr {
     T *p = nullptr;
@@ -28,16 +27,12 @@ struct ComPtr {
     void reset(T *other) { if (p) p->Release(); p = other; }
 };
 
-// Explorer publishes the desktop's view through ShellWindows, which is a
-// single-threaded COM server. Called from the GUI thread with an apartment
-// already initialised by Qt when possible; otherwise it initialises one itself.
 class ApartmentScope
 {
 public:
     ApartmentScope()
     {
-        // S_FALSE and RPC_E_CHANGED_MODE both mean "someone else owns this
-        // thread", in which case we must not uninitialise it.
+
         const HRESULT hr = CoInitializeEx(nullptr,
                                           COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
         m_owner = SUCCEEDED(hr) && hr != S_FALSE;
@@ -51,8 +46,6 @@ private:
     bool m_owner = false;
 };
 
-// Walks ShellWindows -> browser -> active view -> IFolderView and reports the
-// desktop's positions. Returns false when no desktop view is available.
 bool readDesktopView(QHash<QString, QPoint> &positions,
                      QHash<QString, QString> &targets,
                      QSize &cell)
@@ -94,7 +87,6 @@ bool readDesktopView(QHash<QString, QPoint> &positions,
                                     reinterpret_cast<void **>(&folderView.p))) || !folderView)
         return false;
 
-    // Explorer's icon spacing, which is the cell the map lays items out on.
     POINT spacing{0, 0};
     if (SUCCEEDED(folderView->GetSpacing(&spacing)) && spacing.x > 0 && spacing.y > 0)
         cell = QSize(spacing.x, spacing.y);
@@ -113,9 +105,7 @@ bool readDesktopView(QHash<QString, QPoint> &positions,
     while (items->Next(1, &item, nullptr) == S_OK) {
         POINT point{-1, -1};
         if (SUCCEEDED(folderView->GetItemPosition(item, &point))) {
-            // Wide APIs on purpose: fromLocal8Bit mangled any name outside the
-            // local codepage, so the name never matched the real file and that
-            // icon silently fell back to a computed position.
+
             wchar_t displayName[MAX_PATH] = {0};
             STRRET strret;
             if (SUCCEEDED(folder->GetDisplayNameOf(item, SHGDN_INFOLDER, &strret)))
@@ -125,8 +115,6 @@ bool readDesktopView(QHash<QString, QPoint> &positions,
             if (!name.isEmpty())
                 positions.insert(name, QPoint(point.x, point.y));
 
-            // Shortcuts are the one entry whose meaning lives somewhere else;
-            // resolve it so the inspector can show where it points.
             if (name.endsWith(QLatin1String(".lnk"), Qt::CaseInsensitive)) {
                 LPWSTR target = nullptr;
                 if (SUCCEEDED(folder->GetDisplayNameOf(item, SHGDN_FORPARSING, &strret))
@@ -144,9 +132,9 @@ bool readDesktopView(QHash<QString, QPoint> &positions,
     return true;
 }
 
-#endif // Q_OS_WIN
+#endif
 
-} // namespace
+}
 
 namespace DesktopPositions {
 
@@ -156,14 +144,13 @@ Geometry fallbackGeometry()
     if (QScreen *screen = QGuiApplication::primaryScreen()) {
         geometry.screen = screen->availableGeometry().size();
         const qreal ratio = screen->devicePixelRatio();
-        // Explorer works in physical pixels; QScreen reports logical ones.
+
         geometry.screen = QSize(qRound(geometry.screen.width() * ratio),
                                 qRound(geometry.screen.height() * ratio));
     }
     if (geometry.screen.isEmpty())
         geometry.screen = QSize(1920, 1080);
-    // The Windows default icon spacing at 100% scaling. Only used for items the
-    // shell could not report, so it never has to be exact.
+
     geometry.cell = QSize(75, 98);
     geometry.live = false;
     return geometry;
@@ -222,4 +209,4 @@ QHash<QString, QPoint> read(QHash<QString, QString> *targets, Geometry *geometry
     return positions;
 }
 
-} // namespace DesktopPositions
+}

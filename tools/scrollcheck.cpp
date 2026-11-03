@@ -1,11 +1,4 @@
-// Checks the layout view's viewport arithmetic: that the scrollbars actually
-// move the canvas, that a click in list mode lands on the row under the
-// pointer, and that the list highlights a hovered row. Development helper only;
-// lives in tools/ and never ships.
-//
-// All three were broken together because paintEvent draws from m_origin while
-// the scrollbars, the hit test and the hover handler each disagreed about how
-// that origin is built.
+
 #include <QApplication>
 #include <QImage>
 #include <QMouseEvent>
@@ -26,8 +19,6 @@ static void check(bool ok, const QString &what)
         ++failures;
 }
 
-// A session with enough items that the canvas is larger than the viewport in
-// both modes, so both scrollbars have something to scroll.
 static Session makeSession(int columns, int rows)
 {
     Session session;
@@ -74,9 +65,6 @@ static void sendClick(LayoutView *view, const QPointF &pos)
     QApplication::sendEvent(view->viewport(), &release);
 }
 
-// Clicks the centre of a few painted tiles and checks each click selects the
-// tile that was drawn there. Scrolled to `scrollTo` first, because the point of
-// the exercise is that the hit test and the painter agree at any offset.
 static void clickTileCentres(LayoutView *view, QApplication *app,
                              const QString &what, int scrollTo)
 {
@@ -110,7 +98,7 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("CairnScrollCheck"));
 
-    const Session session = makeSession(12, 9);   // 108 items
+    const Session session = makeSession(12, 9);
 
     LayoutView view;
     view.resize(400, 300);
@@ -130,9 +118,6 @@ int main(int argc, char *argv[])
     check(mapTop != mapBottom,
           QStringLiteral("scrolling the map repaints somewhere else"));
 
-    // A click has to select whatever is painted under it, at any scroll offset:
-    // tileRects() reports where each tile was drawn, so clicking the centre of
-    // one must select that very tile.
     clickTileCentres(&view, &app, QStringLiteral("map, unscrolled"), 0);
     clickTileCentres(&view, &app, QStringLiteral("map, scrolled to the bottom"),
                      view.verticalScrollBar()->maximum());
@@ -141,8 +126,6 @@ int main(int argc, char *argv[])
     view.setMode(LayoutView::Mode::List);
     app.processEvents();
 
-    // Rows are kListRowHeight tall and start one margin down. Whatever order the
-    // list is sorted in, clicking row i has to select the i-th visible path.
     const QList<QString> order = view.visiblePaths();
     check(order.size() == session.entries.size(),
           QStringLiteral("every item gets a row"));
@@ -170,8 +153,6 @@ int main(int argc, char *argv[])
     check(listTop != listBottom,
           QStringLiteral("scrolling the list repaints somewhere else"));
 
-    // Hovering a row has to light it up. The pointer is parked off the rows
-    // first so the comparison is against an unhovered list.
     view.verticalScrollBar()->setValue(0);
     app.processEvents();
     sendMove(&view, QPointF(120, 4));

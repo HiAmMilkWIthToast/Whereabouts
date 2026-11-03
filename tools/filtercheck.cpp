@@ -1,4 +1,4 @@
-// Regression checks for the kind-filter chips. Development helper only.
+
 #include <QApplication>
 #include <QHash>
 #include <QPushButton>
@@ -51,15 +51,13 @@ int main(int argc, char *argv[])
     MainWindow window;
     window.presentSession(s);
 
-    // Find the chip row and its buttons.
     const QList<FilterChip *> chips =
         window.findChildren<FilterChip *>(QStringLiteral("filterChip"));
     out << "chips found: " << chips.size() << "\n";
     for (FilterChip *c : chips)
         out << "    chip: [" << c->label() << " " << c->count() << "]\n";
     check(chips.size() == 3, QStringLiteral("one chip per present kind (3 kinds)"));
-    // Order follows the inspector's kind order, so assert on content by name
-    // rather than on position: the chips are Archive, Executable, Document here.
+
     bool documentChipOk = false;
     for (FilterChip *c : chips) {
         if (c->label() == QStringLiteral("Document") && c->count() == 2)
@@ -76,7 +74,6 @@ int main(int argc, char *argv[])
           QStringLiteral("all four items visible before filtering (%1)")
               .arg(view->visiblePaths().size()));
 
-    // Switch off Archives.
     for (FilterChip *chip : chips) {
         if (chip->label() == QStringLiteral("Archive"))
             chip->setChecked(false);
@@ -85,21 +82,18 @@ int main(int argc, char *argv[])
           QStringLiteral("hiding Archive leaves 3 items (%1)")
               .arg(view->visiblePaths().size()));
 
-    // Switch off everything.
     for (FilterChip *chip : chips)
         chip->setChecked(false);
     check(view->visiblePaths().isEmpty(),
           QStringLiteral("hiding every kind leaves nothing (%1)")
               .arg(view->visiblePaths().size()));
 
-    // Back on.
     for (FilterChip *chip : chips)
         chip->setChecked(true);
     check(view->visiblePaths().size() == 4,
           QStringLiteral("re-enabling every chip restores all items (%1)")
               .arg(view->visiblePaths().size()));
 
-    // A session with a single kind must not show a useless chip row.
     Session one;
     one.id = QStringLiteral("onekind");
     one.name = QStringLiteral("One");
@@ -115,9 +109,6 @@ int main(int argc, char *argv[])
           QStringLiteral("a single-kind session shows no chip row (got %1)")
               .arg(afterOne.size()));
 
-    // The label has to sit in the middle of the pill, measured on the rendered
-    // pixels rather than on the arithmetic: advance widths give a digit far more
-    // room than its ink, which is how the text ended up visibly left of centre.
     {
         MainWindow shot;
         Session two;
@@ -136,9 +127,7 @@ int main(int argc, char *argv[])
         check(!drawn.isEmpty(), QStringLiteral("chips exist to measure"));
         for (FilterChip *chip : drawn) {
             const QImage img = chip->grab().toImage();
-            // The pill's fill is taken as the most common colour in the middle
-            // of the widget rather than sampled from one pixel: a single sample
-            // can land on a glyph and invert the whole measurement.
+
             const int inset = 5;
             QHash<QRgb, int> histogram;
             for (int y = inset; y < img.height() - inset; ++y)
@@ -160,9 +149,7 @@ int main(int argc, char *argv[])
             for (int y = inset; y < img.height() - inset; ++y) {
                 for (int x = inset; x < img.width() - inset; ++x) {
                     const QColor c = img.pixelColor(x, y);
-                    // A small tolerance still catches antialiased edge pixels,
-                    // which a strict threshold drops and thereby reports the
-                    // text as narrower than it is.
+
                     const int d = qAbs(c.red() - fill.red())
                                 + qAbs(c.green() - fill.green())
                                 + qAbs(c.blue() - fill.blue());
@@ -177,8 +164,6 @@ int main(int argc, char *argv[])
                 continue;
             }
 
-            // What is being balanced is the gap between the text and the inside
-            // of the pill, so the border has to be subtracted from both sides.
             const int left = minX - inset;
             const int right = (img.width() - 1 - inset) - maxX;
             check(left > 1 && right > 1,
@@ -186,8 +171,7 @@ int main(int argc, char *argv[])
                       .arg(chip->label())
                       .arg(left)
                       .arg(right));
-            // An odd number of pixels cannot be split evenly, so one pixel is
-            // the smallest difference any correct layout can achieve.
+
             check(qAbs(left - right) <= 1,
                   QStringLiteral("chip \"%1\" text is centred (left %2, right %3)")
                       .arg(chip->label())

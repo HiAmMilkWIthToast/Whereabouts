@@ -1,4 +1,4 @@
-// Reproduces the sort popup so its styling can be inspected. Dev helper only.
+
 #include <QAbstractItemView>
 #include <QApplication>
 #include <QComboBox>
@@ -83,8 +83,6 @@ int main(int argc, char *argv[])
     box->showPopup();
     pump(400);
 
-    // The frame around the list is the private container, not the view. Half of
-    // the light area in the report was this, so both are captured.
     view->grab().save(QStringLiteral("C:/Users/Kille/MonkeyCode/shot_popup_view.png"));
     if (container) {
         container->grab().save(

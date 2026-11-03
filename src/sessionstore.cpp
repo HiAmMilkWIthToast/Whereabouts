@@ -14,14 +14,8 @@
 
 namespace {
 
-// Explorer's grid is column-major: it fills a column top to bottom, then moves
-// right. Laying computed positions out the same way makes a non-desktop folder
-// read like the desktop it is imitating.
 constexpr int kMaxRows = 9;
 
-// Items that exist in every desktop folder but are created by Windows, not by
-// the user, and that Explorer never displays. They are skipped: a snapshot is
-// meant to show the folder as it looks, and these have no icon to record.
 bool isHiddenSystemItem(const QString &name)
 {
     return name.compare(QLatin1String("desktop.ini"), Qt::CaseInsensitive) == 0
@@ -34,8 +28,6 @@ QString lowerSuffix(const QFileInfo &info)
     return suffix;
 }
 
-// Baseline folder count, without walking an entire tree (which would make a
-// large folder feel frozen).
 int countChildren(const QString &path, int cap = 999)
 {
     QDir dir(path);
@@ -70,9 +62,6 @@ QString sanitize(const QString &name)
     if (cleaned.isEmpty())
         return QStringLiteral("session");
 
-    // Windows reserves these names for devices, and a file called "con.session"
-    // is not a normal file. A folder named CON, PRN, AUX or NUL would otherwise
-    // produce an id that could not be written or deleted.
     static const QSet<QString> reserved = {
         QStringLiteral("con"),  QStringLiteral("prn"),  QStringLiteral("aux"),
         QStringLiteral("nul"),  QStringLiteral("com1"), QStringLiteral("com2"),
@@ -83,14 +72,14 @@ QString sanitize(const QString &name)
         QStringLiteral("lpt6"), QStringLiteral("lpt7"), QStringLiteral("lpt8"),
         QStringLiteral("lpt9")
     };
-    // The rule applies to the stem, so "con.txt" is reserved as well.
+
     const QString stem = cleaned.section(QLatin1Char('.'), 0, 0).toLower();
     if (reserved.contains(stem) || reserved.contains(cleaned.toLower()))
         cleaned.prepend(QLatin1Char('_'));
     return cleaned;
 }
 
-} // namespace
+}
 
 namespace SessionStore {
 
@@ -105,8 +94,7 @@ QString directory()
 
 QString desktopPath()
 {
-    // Ask the shell rather than assuming %USERPROFILE%\Desktop, which is wrong
-    // whenever the folder has been redirected (OneDrive does this by default).
+
     const QStringList candidates = QStandardPaths::standardLocations(
         QStandardPaths::DesktopLocation);
     for (const QString &candidate : candidates) {
@@ -137,8 +125,7 @@ QString makeId(const QString &rootPath)
         QString::number(QDateTime::currentMSecsSinceEpoch(), 36).right(5);
 
     QString id = stem + QLatin1Char('-') + stamp;
-    // Two captures in the same millisecond are unlikely, but the handle is the
-    // file name, so a collision would silently overwrite.
+
     int attempt = 1;
     while (QFile::exists(pathForId(id)))
         id = stem + QLatin1Char('-') + stamp + QLatin1Char('-')
@@ -165,7 +152,6 @@ Session capture(const QString &rootPath)
 
     const bool desktop = isDesktopPath(session.rootPath);
 
-    // Only the desktop has a live Explorer view to read positions from.
     QHash<QString, QPoint> shellPositions;
     QHash<QString, QString> shellTargets;
     if (desktop) {
@@ -186,8 +172,6 @@ Session capture(const QString &rootPath)
         QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System,
         QDir::Name | QDir::IgnoreCase);
 
-    // Stable order for the computed grid: folders first, then files, both
-    // alphabetically, which is how a fresh desktop is sorted.
     QList<QFileInfo> ordered;
     ordered.reserve(infos.size());
     for (const QFileInfo &info : infos) {
@@ -201,8 +185,6 @@ Session capture(const QString &rootPath)
                          return a.fileName().compare(b.fileName(), Qt::CaseInsensitive) < 0;
                      });
 
-    // Cells already taken by a live position, so a computed tile never lands on
-    // top of one read from the desktop.
     QSet<int> usedCells;
     const QSize cellSize = session.cellSize.isValid() ? session.cellSize
                                                       : QSize(75, 98);
@@ -211,10 +193,6 @@ Session capture(const QString &rootPath)
 
     const auto cellKey = [](int col, int row) { return col * 10000 + row; };
 
-    // Seed occupancy from the positions the shell reported for entries that are
-    // actually in this folder. Explorer hides a known extension, so the shell's
-    // key is the file name with its final extension removed ("SnipEx_v1.4.34.zip"
-    // is reported as "SnipEx_v1.4.34"), with folders reported unchanged.
     const auto shellPositionFor = [&](const QFileInfo &info, QPoint *out) {
         auto exact = shellPositions.constFind(info.fileName());
         if (exact != shellPositions.constEnd()) {
@@ -248,15 +226,13 @@ Session capture(const QString &rootPath)
         if (info.isDir())
             entry.children = countChildren(info.filePath());
 
-        // Match the shell by full name first, then by the extension-less name it
-        // actually reports.
         QPoint shellPos;
         if (shellPositionFor(info, &shellPos)) {
             entry.pos = shellPos;
             entry.fromShell = true;
             entry.cell = QPoint(shellPos.x() / cellW, shellPos.y() / cellH);
         } else {
-            // First free cell, filling columns top-to-bottom like Explorer.
+
             int slot = gridSlot;
             QPoint cell;
             do {
@@ -267,8 +243,7 @@ Session capture(const QString &rootPath)
 
             entry.fromShell = false;
             entry.cell = cell;
-            // A matching pixel position keeps both kinds of tile in one
-            // coordinate space when the map draws them.
+
             entry.pos = QPoint(cell.x() * cellW, cell.y() * cellH);
         }
 
@@ -290,10 +265,6 @@ bool save(const Session &session, QString *error)
     QDir().mkpath(directory());
     const QString path = pathForId(session.id);
 
-    // Write through QSaveFile so the file is replaced atomically. Opening the
-    // real path with Truncate emptied a perfectly good session before a single
-    // byte was written, so a full disk or a failed write left the user with a
-    // truncated, unloadable file and no way back.
     QSaveFile file(path);
     if (!file.open(QIODevice::WriteOnly)) {
         if (error)
@@ -315,7 +286,6 @@ bool save(const Session &session, QString *error)
         return false;
     }
 
-    // Remember the most recent handle so the viewer can offer it first.
     QSettings settings;
     settings.setValue(QStringLiteral("sessions/lastId"), session.id);
     return true;
@@ -371,8 +341,6 @@ QList<Session> listAll(const QStringList &paths)
             sessions.append(session);
     }
 
-    // Newest first. Ties are broken by id so the order is stable between
-    // refreshes instead of depending on the scan order of the directory.
     std::sort(sessions.begin(), sessions.end(),
               [](const Session &a, const Session &b) {
                   if (a.capturedAt != b.capturedAt)
@@ -382,4 +350,4 @@ QList<Session> listAll(const QStringList &paths)
     return sessions;
 }
 
-} // namespace SessionStore
+}

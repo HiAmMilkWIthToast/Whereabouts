@@ -90,8 +90,6 @@ const QSet<QString> &videoSuffixes()
     return set;
 }
 
-// Reads the first handful of bytes. Returns an empty array when the file cannot
-// be opened, which simply means "trust the extension".
 QByteArray headOf(const QString &path, int bytes = 8)
 {
     QFile file(path);
@@ -102,29 +100,28 @@ QByteArray headOf(const QString &path, int bytes = 8)
 
 bool looksLikeArchive(const QByteArray &head)
 {
-    if (head.startsWith("PK"))                 // zip, jar, apk, docx, ...
+    if (head.startsWith("PK"))
         return true;
     if (head.startsWith("Rar!"))
         return true;
     if (head.startsWith("7z\xBC\xAF\x27\x1C"))
         return true;
-    if (head.startsWith("\x1F\x8B"))           // gzip
+    if (head.startsWith("\x1F\x8B"))
         return true;
     if (head.startsWith("BZh"))
         return true;
-    if (head.startsWith("\xFD" "7zXZ"))        // xz
+    if (head.startsWith("\xFD" "7zXZ"))
         return true;
     return false;
 }
 
 bool looksLikeExecutable(const QByteArray &head)
 {
-    // PE images start with "MZ"; the plain-text script types are already
-    // decided by their extension.
+
     return head.startsWith("MZ");
 }
 
-} // namespace
+}
 
 QString kindName(Kind kind)
 {
@@ -162,7 +159,7 @@ QString kindShortName(Kind kind)
 
 QString kindColor(Kind kind)
 {
-    // Restrained, slightly desaturated hues that sit on near-black surfaces.
+
     switch (kind) {
     case Kind::Folder:     return QStringLiteral("#8fa4bf");
     case Kind::Archive:    return QStringLiteral("#d0a86a");
@@ -210,8 +207,6 @@ Kind classify(const QString &path, const QString &suffix, bool isDir)
 
     const Kind byName = kindForSuffix(suffix);
 
-    // A renamed file is common on a desktop (.zip that is really a text file, or
-    // an .exe with no extension). Only the ambiguous cases cost a disk read.
     if (byName == Kind::Archive || byName == Kind::Executable) {
         const QByteArray head = headOf(path);
         if (!head.isEmpty()) {
@@ -227,7 +222,7 @@ Kind classify(const QString &path, const QString &suffix, bool isDir)
         return Kind::Shortcut;
 
     if (byName == Kind::Other) {
-        // No useful extension: sniff for the two kinds worth naming.
+
         const QByteArray head = headOf(path);
         if (looksLikeExecutable(head))
             return Kind::Executable;
@@ -238,7 +233,7 @@ Kind classify(const QString &path, const QString &suffix, bool isDir)
     return byName;
 }
 
-} // namespace KindDetect
+}
 
 QJsonObject Entry::toJson() const
 {
@@ -302,7 +297,7 @@ Entry Entry::fromJson(const QJsonObject &object)
                             cell.value(QStringLiteral("y")).toInt());
         entry.fromShell = false;
     } else {
-        // Written by a live capture: the pixel position is the real one.
+
         entry.cell = QPoint(-1, -1);
         entry.fromShell = true;
     }

@@ -102,10 +102,6 @@ SessionWindow::SessionWindow(QWidget *parent)
         QApplication::clipboard()->setText(text);
     });
 
-    // A viewer is often the window left open on a second screen while the
-    // folder is being tidied in Explorer, so it follows its folder the same way
-    // the library window does. Nothing is written back: the .session file stays
-    // the capture it was.
     m_watcher = new FolderWatcher(this);
     connect(m_watcher, &FolderWatcher::folderChanged, this,
             &SessionWindow::onFolderChanged);
@@ -155,9 +151,6 @@ void SessionWindow::onFolderChanged()
     if (m_session.id.isEmpty())
         return;
 
-    // A missing root is the normal result of the folder being deleted or
-    // renamed away. Re-scanning it would yield an empty session and wipe what
-    // is on screen, so the map is left alone and the footer says what happened.
     if (!QFileInfo(m_session.rootPath).isDir()) {
         updateLiveState();
         return;
@@ -169,8 +162,6 @@ void SessionWindow::onFolderChanged()
 
     Session updated = SessionStore::capture(m_session.rootPath);
 
-    // The same snapshot following its folder, not a new one: a fresh capture
-    // mints an id and a timestamp, and both have to stay as they were.
     updated.id = m_session.id;
     updated.name = m_session.name;
     updated.capturedAt = m_session.capturedAt;
@@ -183,11 +174,8 @@ void SessionWindow::onFolderChanged()
                  updated.summary(),
                  updated.capturedAt.toString(QStringLiteral("MMM d, yyyy  HH:mm"))));
 
-    // A change elsewhere in the folder must not clear the inspector under the
-    // user, so the selection is restored afterwards. setSession() has to run
-    // first, because it drops back to the summary panel.
     const QString keep = m_layout->selectedPath();
-    // resetView=false: the same folder refreshed, so the zoom and pan survive.
+
     m_layout->setSession(updated, false);
     m_inspector->setSession(updated);
 
@@ -223,7 +211,7 @@ void SessionWindow::updateLiveState()
 
 void SessionWindow::keyPressEvent(QKeyEvent *event)
 {
-    // The footer advertises these, so they have to work.
+
     const bool control = event->modifiers() & Qt::ControlModifier;
     if (control && event->key() == Qt::Key_F) {
         m_search->setFocus();

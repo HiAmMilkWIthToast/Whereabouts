@@ -1,4 +1,4 @@
-// Regression checks for keyboard navigation. Development helper only.
+
 #include <QApplication>
 #include <QKeyEvent>
 #include <QTextStream>
@@ -40,7 +40,6 @@ int main(int argc, char *argv[])
     app.setApplicationName(QStringLiteral("CairnKeyTest"));
     app.setOrganizationName(QStringLiteral("CairnKeyTest"));
 
-    // A 2x2 grid so up/down/left/right each have an unambiguous target.
     Session s;
     s.id = QStringLiteral("keytest");
     s.name = QStringLiteral("Keys");
@@ -60,13 +59,11 @@ int main(int argc, char *argv[])
     check(view.focusPolicy() == Qt::StrongFocus,
           QStringLiteral("view accepts keyboard focus"));
 
-    // Nothing selected yet; the first arrow press selects the first tile.
     press(&view, Qt::Key_Right);
     const QString first = view.selectedPath();
     check(!first.isEmpty(),
           QStringLiteral("first arrow press selects something (%1)").arg(first));
 
-    // Walk right from the first tile and confirm the selection actually changes.
     press(&view, Qt::Key_Right);
     const QString second = view.selectedPath();
     check(!second.isEmpty() && second != first,
@@ -79,12 +76,10 @@ int main(int argc, char *argv[])
           QStringLiteral("Down moves to a different tile (%1 -> %2)")
               .arg(second, third));
 
-    // Escape clears it.
     press(&view, Qt::Key_Escape);
     check(view.selectedPath().isEmpty(),
           QStringLiteral("Escape clears the selection"));
 
-    // Enter activates the current selection.
     bool activated = false;
     QString activatedPath;
     QObject::connect(&view, &LayoutView::entryActivated,
@@ -95,7 +90,6 @@ int main(int argc, char *argv[])
     check(activated && activatedPath == beforeEnter,
           QStringLiteral("Enter activates the selected item"));
 
-    // List mode: up/down walk the column and wrap at the ends.
     view.setMode(LayoutView::Mode::List);
     press(&view, Qt::Key_Escape);
     press(&view, Qt::Key_Down);
@@ -107,7 +101,6 @@ int main(int argc, char *argv[])
     check(!listLast.isEmpty() && listLast != listFirst,
           QStringLiteral("list mode wraps upward past the first row"));
 
-    // An empty view must not crash or invent a selection.
     Session empty;
     empty.id = QStringLiteral("empty");
     empty.rootPath = QStringLiteral("C:/tmp");

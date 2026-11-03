@@ -12,8 +12,6 @@ class QVBoxLayout;
 class QHBoxLayout;
 class QVariantAnimation;
 
-// Icon-only button that animates hover, armed and checked states, and tints its
-// glyph with the accent colour when active. Used by the sidebar and title bar.
 class IconButton : public QWidget
 {
     Q_OBJECT
@@ -25,7 +23,6 @@ public:
 
     void setTooltip(const QString &text);
 
-    // Chosen glyph, so a window control can show Maximize or Restore.
     void setIcon(Icons::Id id);
     Icons::Id icon() const { return m_id; }
 
@@ -55,28 +52,18 @@ private:
     QVariantAnimation *m_activeAnim = nullptr;
 };
 
-// Frameless, draggable custom title bar: the mark, the app name, and the
-// standard window controls.
-//
-// The controls only emit signals; ChromeWindow binds them to the real window
-// actions, so adding a title bar is enough to get working buttons.
 class TitleBar : public QWidget
 {
     Q_OBJECT
 public:
     explicit TitleBar(QWidget *parent = nullptr);
 
-    // Optional middle slot, filled by the window (search box, session label).
     QHBoxLayout *centerLayout() const { return m_center; }
 
     void setSubtitle(const QString &text);
 
-    // Keeps the maximize glyph honest when the window changes state.
     void setMaximized(bool maximized);
 
-    // Points the mark and the name at a web address. Clicking either opens it;
-    // an empty address leaves them inert so a build without one has no dead
-    // affordance.
     void setBrandLink(const QUrl &url);
 
 signals:
@@ -89,7 +76,7 @@ protected:
     void mouseDoubleClickEvent(QMouseEvent *event) override;
 
 private:
-    // The mark and the name as one target: pressing either opens the link.
+
     class BrandButton;
 
     QLabel *m_subtitle = nullptr;
@@ -98,15 +85,12 @@ private:
     BrandButton *m_brand = nullptr;
 };
 
-// The narrow icon rail. A button is added per page and shown as active when its
-// page is current.
 class Sidebar : public QWidget
 {
     Q_OBJECT
 public:
     explicit Sidebar(QWidget *parent = nullptr);
 
-    // Returns the id to pass to setActive().
     int addPage(Icons::Id icon, const QString &tooltip);
     void setActive(int id);
 
@@ -117,7 +101,6 @@ private:
     QVector<IconButton *> m_buttons;
 };
 
-// Thin footer with a handful of live facts about what is loaded.
 class StatusBar : public QWidget
 {
     Q_OBJECT
@@ -129,8 +112,6 @@ public:
     void setCounts(const QString &text);
     void setHint(const QString &text);
 
-    // The clock shows local time and updates itself; the caller only decides
-    // whether to show it.
     void setClockVisible(bool visible);
 
 private:
@@ -146,22 +127,14 @@ private:
     QTimer *m_tick = nullptr;
 };
 
-// Base class for every top-level window in the app: rounded frameless shell
-// with native edge resizing, a dark caption, and drag/zoom via the title bar.
-//
-// Subclasses only add their title bar and body; the window controls, dragging,
-// double-click-to-maximize, resizing and state tracking all live here so no
-// window can silently end up with dead buttons.
 class ChromeWindow : public QWidget
 {
     Q_OBJECT
 public:
     explicit ChromeWindow(QWidget *parent = nullptr);
 
-    // The vertical layout inside the rounded frame; callers add their body here.
     QVBoxLayout *frameLayout() const { return m_frameLayout; }
 
-    // The title bar to embed. ChromeWindow connects its controls.
     TitleBar *createTitleBar();
 
 protected:

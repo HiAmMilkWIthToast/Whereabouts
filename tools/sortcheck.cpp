@@ -1,4 +1,4 @@
-// Regression checks for list sorting. Development helper only.
+
 #include <QApplication>
 #include <QComboBox>
 #include <QPushButton>
@@ -105,7 +105,6 @@ int main(int argc, char *argv[])
               QStringLiteral("modified ascending"));
     }
 
-    // Sorting must survive a mode toggle rather than silently resetting.
     view.setSort(LayoutView::Sort::Size, true);
     view.setMode(LayoutView::Mode::Map);
     view.setMode(LayoutView::Mode::List);
@@ -116,7 +115,6 @@ int main(int argc, char *argv[])
               QStringLiteral("sort survives a map/list round trip"));
     }
 
-    // ---- the sort control in the real window
     {
         out << "\n== sort control in the window ==\n";
         MainWindow window;
@@ -132,20 +130,19 @@ int main(int argc, char *argv[])
             check(v != nullptr && toggle != nullptr,
                   QStringLiteral("view and toggle are reachable"));
 
-            // The sort bar must only appear in list mode.
             if (v && toggle) {
-                // Find the bar: the parent widget of the sort box.
+
                 QWidget *bar = box->parentWidget();
                 check(bar && bar->isHidden(),
                       QStringLiteral("sort bar is hidden in map mode"));
 
-                toggle->click();   // switch to list
+                toggle->click();
                 check(v->mode() == LayoutView::Mode::List,
                       QStringLiteral("toggle switches to list mode"));
                 check(bar && !bar->isHidden(),
                       QStringLiteral("sort bar appears in list mode"));
 
-                toggle->click();   // back to map
+                toggle->click();
                 check(v->mode() == LayoutView::Mode::Map,
                       QStringLiteral("toggle switches back to map mode"));
                 check(bar && bar->isHidden(),

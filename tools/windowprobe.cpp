@@ -1,7 +1,4 @@
-// Clicks the real title-bar buttons on each top-level window and reports whether
-// the window actually minimized / closed. Development helper only.
-//
-// Windows are moved off-screen so this does not flash in front of the user.
+
 #include <QApplication>
 #include <QElapsedTimer>
 #include <QKeyEvent>
@@ -35,8 +32,6 @@ static void check(bool condition, const QString &what)
         ++failures;
 }
 
-// Presses and releases a widget with left-button events, exactly what a user's
-// click produces once it reaches the widget.
 static void click(QWidget *widget)
 {
     const QPointF centre(widget->width() / 2.0, widget->height() / 2.0);
@@ -48,7 +43,6 @@ static void click(QWidget *widget)
     QApplication::sendEvent(widget, &release);
 }
 
-// The three window-control buttons, in the order the title bar creates them.
 static QList<IconButton *> controls(QWidget *window)
 {
     auto *bar = window->findChild<TitleBar *>();
@@ -80,7 +74,6 @@ static void probe(const QString &label, QWidget *window)
         return;
     }
 
-    // Minimize
     click(buttons.at(0));
     pump(250);
     check(window->isMinimized(), QStringLiteral("minimize button minimizes the window"));
@@ -88,7 +81,6 @@ static void probe(const QString &label, QWidget *window)
     window->showNormal();
     pump(250);
 
-    // Maximize. The glyph must follow the state, or the button lies.
     click(buttons.at(1));
     pump(250);
     check(window->isMaximized(), QStringLiteral("maximize button maximizes the window"));
@@ -100,7 +92,6 @@ static void probe(const QString &label, QWidget *window)
     check(buttons.at(1)->icon() == Icons::Id::Maximize,
           QStringLiteral("maximize glyph returns when restored"));
 
-    // Close
     click(buttons.at(2));
     pump(250);
     check(!window->isVisible(), QStringLiteral("close button closes the window"));
@@ -126,8 +117,6 @@ int main(int argc, char *argv[])
         delete viewer;
     }
 
-    // Advertised shortcuts must actually do something. Ctrl+F on the viewer is
-    // the cheapest one to observe: it must move focus into the search field.
     {
         auto *viewer = new SessionWindow;
         viewer->move(-4000, -4000);
@@ -138,11 +127,7 @@ int main(int argc, char *argv[])
         QKeyEvent press(QEvent::KeyPress, Qt::Key_F, Qt::ControlModifier);
         QApplication::sendEvent(viewer, &press);
         pump(150);
-        // Asked of the viewer, not of the application. The global focusWidget()
-        // is only non-null while that window holds activation, and this window
-        // is placed off-screen where the window manager may never activate it --
-        // the event still reaches the handler, so the global answer was a coin
-        // toss that failed perhaps one run in twenty.
+
         auto *focused = qobject_cast<QLineEdit *>(viewer->focusWidget());
         check(focused != nullptr,
               QStringLiteral("Ctrl+F focuses a text field in the viewer"));

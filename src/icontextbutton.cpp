@@ -8,24 +8,13 @@
 
 namespace {
 
-// Finds the `color` declared for exactly this selector in the stylesheet.
-//
-// The alternative -- reading widget->palette() -- does not work: Qt parses QSS
-// at paint time, so the palette is still the default and every glyph would come
-// out black. Reading the sheet keeps the stylesheet authoritative.
-//
-// This walks the text line by line rather than using a regular expression. A
-// regex over the whole sheet was tried first and was wrong twice: it treated
-// ":disabled" as an optional suffix, so the resting state picked up the disabled
-// grey, and it then failed to match at all once the type selector in front of
-// the id was taken into account. A line scan has neither failure mode.
 QString declaredColor(const QString &sheet, const QString &selector)
 {
     const QStringList lines = sheet.split(QLatin1Char('\n'));
-    QString current;          // selector of the block being read
+    QString current;
     bool inBlock = false;
     bool matched = false;
-    QString color;            // last match wins, as in the cascade
+    QString color;
 
     for (const QString &raw : lines) {
         const QString line = raw.trimmed();
@@ -35,12 +24,10 @@ QString declaredColor(const QString &sheet, const QString &selector)
         if (!inBlock) {
             if (!line.endsWith(QLatin1Char('{')))
                 continue;
-            // "QPushButton#secondary:hover {" -> "QPushButton#secondary:hover"
+
             current = line.left(line.size() - 1).trimmed();
             inBlock = true;
-            // The selector must END with what was asked for. A plain "contains"
-            // also matched "QPushButton#secondary:hover" when the resting rule
-            // was wanted, and hover rules come later in the sheet, so they won.
+
             matched = current.endsWith(selector);
             continue;
         }
@@ -61,8 +48,6 @@ QString declaredColor(const QString &sheet, const QString &selector)
     return color;
 }
 
-// The sheet is written with %TOKEN% placeholders; resolve the ones that can
-// appear in a colour.
 QString expandTokens(QString value)
 {
     value.replace(QLatin1String("%ACCENT_CONTRAST%"), Theme::accentContrastName());
@@ -72,13 +57,6 @@ QString expandTokens(QString value)
     return value;
 }
 
-// The stylesheet last installed on the application, built once.
-//
-// Keyed on the QApplication pointer so a second QApplication (the tools build
-// one per run) and a genuine restyle both rebuild, while ordinary painting does
-// not. Cached by instance rather than by a manual invalidate() call: nothing
-// would call that at the right moment, and a stale sheet would paint buttons in
-// the wrong colour with no visible symptom.
 const QString &cachedStyleSheet()
 {
     static const QApplication *owner = nullptr;
@@ -92,13 +70,12 @@ const QString &cachedStyleSheet()
     return sheet;
 }
 
-} // namespace
+}
 
 IconTextButton::IconTextButton(Icons::Id icon, const QString &text, QWidget *parent)
     : QPushButton(text, parent), m_icon(icon), m_label(text)
 {
-    // The label is painted, not handed to the style; keeping it on the widget
-    // as well would make the style draw it a second time.
+
     setText(QString());
     setCursor(Qt::PointingHandCursor);
     setAttribute(Qt::WA_Hover, true);
@@ -133,14 +110,9 @@ QColor IconTextButton::textColor() const
         name = QStringLiteral("ghost");
 
     const QString base = QStringLiteral("#") + name;
-    // Building the sheet costs a 12KB template copy plus four whole-text
-    // replacements, and this runs from paintEvent -- every repaint, hover and
-    // resize. It only changes when the application sets a new stylesheet, so it
-    // is cached against the QApplication instance that installed it.
+
     const QString &sheet = cachedStyleSheet();
 
-    // Most specific state first, falling back to the resting rule -- the order
-    // the stylesheet itself resolves in.
     QString value;
     if (isDown() || isChecked())
         value = declaredColor(sheet, base + QStringLiteral(":pressed"));
@@ -160,7 +132,7 @@ QSize IconTextButton::sizeHint() const
 {
     const QFontMetrics fm(font());
     const int w = kGlyph + kGap + fm.horizontalAdvance(m_label);
-    // 16px of padding each side matches the QSS rules, plus the 1px borders.
+
     return QSize(w + 16 * 2 + 2, qMax(kGlyph + 12, fm.height() + 11));
 }
 
@@ -185,8 +157,7 @@ void IconTextButton::leaveEvent(QEvent *event)
 
 void IconTextButton::paintEvent(QPaintEvent *)
 {
-    // The frame and background come from the stylesheet, exactly as they would
-    // for a plain QPushButton.
+
     QStyleOptionButton opt;
     initStyleOption(&opt);
     opt.text.clear();
@@ -198,13 +169,10 @@ void IconTextButton::paintEvent(QPaintEvent *)
 
     const QColor ink = textColor();
     const int contentW = kGlyph + kGap + fontMetrics().horizontalAdvance(m_label);
-    // Integer division keeps the pair centred in an odd-width button instead of
-    // drifting half a pixel right.
+
     const int x = (width() - contentW) / 2;
     const int glyphY = (height() - kGlyph) / 2;
 
-    // Disabled glyphs dim with the text, or the icon reads as enabled next to a
-    // greyed-out label.
     QColor glyphInk = ink;
     if (!isEnabled())
         glyphInk.setAlpha(150);

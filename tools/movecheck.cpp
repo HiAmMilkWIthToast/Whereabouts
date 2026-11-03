@@ -1,5 +1,4 @@
-// Reproduces the reported case: a file is MOVED while the window is open.
-// Development helper only.
+
 #include <QApplication>
 #include <QDir>
 #include <QEventLoop>
@@ -71,7 +70,6 @@ int main(int argc, char *argv[])
 
     check(paths(view).size() == 2, QStringLiteral("starts with 2 items (%1)").arg(paths(view).size()));
 
-    // ---- THE REPORTED CASE 1: rename within the folder
     out << "\n== rename a .txt in place ==\n";
     QFile::rename(root + "/notes.txt", root + "/renamed.txt");
     pump(1200);
@@ -82,7 +80,6 @@ int main(int argc, char *argv[])
     check(!after.contains(QStringLiteral("notes.txt")),
           QStringLiteral("old name is gone"));
 
-    // ---- CASE 2: move a .txt OUT of the folder
     out << "\n== move a .txt out of the folder ==\n";
     QFile::rename(root + "/renamed.txt", away + "/renamed.txt");
     pump(1200);
@@ -91,7 +88,6 @@ int main(int argc, char *argv[])
     check(!after.contains(QStringLiteral("renamed.txt")),
           QStringLiteral("the moved file disappeared (%1)").arg(after.join(QLatin1Char(','))));
 
-    // ---- CASE 3: move a .txt INTO the folder
     out << "\n== move a .txt into the folder ==\n";
     QFile::rename(away + "/renamed.txt", root + "/incoming.txt");
     pump(1200);
@@ -100,7 +96,6 @@ int main(int argc, char *argv[])
     check(after.contains(QStringLiteral("incoming.txt")),
           QStringLiteral("the arriving file shows up (%1)").arg(after.join(QLatin1Char(','))));
 
-    // ---- CASE 4: move a .txt into a subfolder of the folder
     out << "\n== move a .txt into a subfolder ==\n";
     QDir().mkpath(root + "/sub");
     pump(1200);
@@ -113,7 +108,6 @@ int main(int argc, char *argv[])
               .arg(after.join(QLatin1Char(','))));
     out << "    (present before: " << withSub << ", after: " << after.size() << ")\n";
 
-    // ---- CASE 5: the folder itself is renamed on disk
     out << "\n== the watched folder is renamed away ==\n";
     const QString movedRoot = root + "-moved";
     QDir().rename(root, movedRoot);

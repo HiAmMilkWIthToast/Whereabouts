@@ -1,5 +1,4 @@
-// Renders the window header so the sort control and the kind chips can be
-// inspected as images. Development helper only.
+
 #include <QApplication>
 #include <QComboBox>
 #include <QEventLoop>
@@ -36,8 +35,7 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("CairnShot"));
     app.setOrganizationName(QStringLiteral("CairnShot"));
-    // The real entry point installs the stylesheet; without this the widgets
-    // fall back to the platform style and the shot would not show the app.
+
     app.setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
     app.setStyleSheet(Theme::buildStyleSheet());
 
@@ -56,7 +54,7 @@ int main(int argc, char *argv[])
     window.presentSession(s);
     window.show();
     pump(300);
-    // The detail page, where the "Sessions" way back and the sort control are.
+
     {
         QImage detail(window.width(), window.height(),
                      QImage::Format_ARGB32_Premultiplied);
@@ -65,15 +63,12 @@ int main(int argc, char *argv[])
         detail.save(QStringLiteral("C:/Users/Kille/MonkeyCode/shot_detail.png"));
     }
 
-    // presentSession goes straight to the detail page, but the greeting lives
-    // on the library page, so step back to it the way Escape does.
     {
         QKeyEvent esc(QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier);
         QApplication::sendEvent(&window, &esc);
         pump(200);
     }
 
-    // The Sessions page, so the greeting is captured where it lives.
     {
         QImage lib(window.width(), window.height(),
                    QImage::Format_ARGB32_Premultiplied);
@@ -82,12 +77,9 @@ int main(int argc, char *argv[])
         lib.save(QStringLiteral("C:/Users/Kille/MonkeyCode/shot_library.png"));
     }
 
-    // Back into the snapshot: the sort control only exists on that page, and
-    // the list mode it applies to is reached from there.
     window.presentSession(s);
     pump(200);
 
-    // Sorting only applies to the list, so the control needs list mode.
     for (QPushButton *b : window.findChildren<QPushButton *>()) {
         if (b->text() == QStringLiteral("List")) {
             b->click();

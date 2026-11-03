@@ -1,8 +1,4 @@
-// End-to-end checks for live folder updates. Development helper only.
-//
-// Uses a real folder on disk: the point of the feature is that moving something
-// in Explorer updates the app, so the test must exercise the filesystem rather
-// than a stub.
+
 #include <QApplication>
 #include <QDir>
 #include <QEventLoop>
@@ -31,7 +27,6 @@ static void check(bool ok, const QString &what)
         ++failures;
 }
 
-// Runs the event loop for a while so the watcher's debounce timer can fire.
 static void pump(int ms)
 {
     QEventLoop loop;
@@ -61,7 +56,6 @@ int main(int argc, char *argv[])
     }
     const QString root = tmp.path();
 
-    // ---------------------------------------------------------------- chip text
     {
         out << "== chip shows name and count separately ==\n";
         FilterChip chip(QStringLiteral("Folder"), 1);
@@ -70,9 +64,7 @@ int main(int argc, char *argv[])
               QStringLiteral("label is just the kind name (%1)").arg(chip.label()));
         check(chip.count() == 1,
               QStringLiteral("count is carried separately (%1)").arg(chip.count()));
-        // An odd leftover cannot be split evenly across two sides, so a single
-        // pixel is the smallest gap any correct layout can leave. Demanding
-        // exact equality only held while the content width happened to be even.
+
         const int gap = qAbs(chip.leftInset() - chip.rightInset());
         check(gap <= 1,
               QStringLiteral("padding is symmetric to within a pixel (L=%1 R=%2)")
@@ -84,7 +76,6 @@ int main(int argc, char *argv[])
                   .arg(chip.height()));
     }
 
-    // ------------------------------------------------------- the watcher alone
     {
         out << "\n== watcher sees a new file ==\n";
         writeFile(root + QStringLiteral("/first.txt"), "a");
@@ -101,7 +92,6 @@ int main(int argc, char *argv[])
         pump(900);
         check(reports > 0, QStringLiteral("a new file raised a change (%1)").arg(reports));
 
-        // A burst must not raise one signal per notification.
         reports = 0;
         for (int i = 0; i < 5; ++i)
             writeFile(root + QStringLiteral("/burst%1.txt").arg(i), "c");
@@ -113,11 +103,9 @@ int main(int argc, char *argv[])
         check(!watcher.isWatching(), QStringLiteral("stop() releases the watch"));
     }
 
-    // ------------------------------------------- the window follows its folder
     {
         out << "\n== the open snapshot follows the folder ==\n";
 
-        // Start from a clean, known folder.
         for (const QString &name : QDir(root).entryList(QDir::Files | QDir::NoDotAndDotDot))
             QFile::remove(root + QLatin1Char('/') + name);
 
@@ -139,7 +127,6 @@ int main(int argc, char *argv[])
         const int before = view->visiblePaths().size();
         check(before == 2, QStringLiteral("two items to begin with (%1)").arg(before));
 
-        // Add a third item while the window is open.
         writeFile(root + QStringLiteral("/arrived.png"), "img");
         pump(1200);
 
@@ -155,11 +142,9 @@ int main(int argc, char *argv[])
         }
         check(seesIt, QStringLiteral("the new item is the one that was added"));
 
-        // The handle must NOT change: this is the same snapshot, following.
         check(window.findChild<LayoutView *>() != nullptr,
               QStringLiteral("window still shows a session"));
 
-        // Removing an item must also be followed.
         QFile::remove(root + QStringLiteral("/move-me.zip"));
         pump(1200);
         check(view->visiblePaths().size() == 2,
@@ -167,7 +152,6 @@ int main(int argc, char *argv[])
                   .arg(view->visiblePaths().size()));
     }
 
-    // ------------------------------------- the viewer window follows it too
     {
         out << "\n== a session in its own window follows the folder ==\n";
 
@@ -176,8 +160,6 @@ int main(int argc, char *argv[])
         writeFile(viewerRoot + QStringLiteral("/one.txt"), "1");
         writeFile(viewerRoot + QStringLiteral("/two.txt"), "2");
 
-        // The viewer loads from a saved file rather than from memory, which is
-        // the whole point of it: a handle on the command line has to work.
         Session saved = SessionStore::capture(viewerRoot);
         QString error;
         const bool wrote = SessionStore::save(saved, &error);
@@ -206,8 +188,6 @@ int main(int argc, char *argv[])
             check(view->visiblePaths().contains(QStringLiteral("three.zip")),
                   QStringLiteral("and it is the item that was added"));
 
-            // The handle and the capture time identify the snapshot, so
-            // following the folder must not quietly change either.
             check(viewer.sessionId() == saved.id,
                   QStringLiteral("the handle is unchanged (%1)").arg(viewer.sessionId()));
 
@@ -223,7 +203,6 @@ int main(int argc, char *argv[])
         QFile::remove(SessionStore::pathForId(saved.id));
     }
 
-    // ----------------------------------------------- a vanished folder is safe
     {
         out << "\n== deleting the folder does not wipe the view ==\n";
         QTemporaryDir doomed;
@@ -243,8 +222,6 @@ int main(int argc, char *argv[])
         doomed.remove();
         pump(1200);
 
-        // The map must still show what it had rather than blanking out, which is
-        // what a naive re-scan of a missing folder would do.
         check(view->visiblePaths().size() == 1,
               QStringLiteral("the map keeps its items (%1)")
                   .arg(view->visiblePaths().size()));

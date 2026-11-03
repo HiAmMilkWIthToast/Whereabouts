@@ -27,12 +27,6 @@ void FilterChip::layoutText() const
     m_countAdvance = metrics.horizontalAdvance(countText);
     m_countOriginX = m_labelAdvance + kGap;
 
-    // Where the two runs land is decided by the rasteriser, not by the metrics
-    // API: a glyph's advance includes bearings that draw nothing, and predicting
-    // the painted extent from the metrics still left the text visibly off
-    // centre. So the run is drawn once, in black on transparent, and the pixels
-    // that actually appear are measured. That is the same rasteriser the paint
-    // code uses, so the measurement cannot disagree with what gets drawn.
     const int probeW = m_countOriginX + m_countAdvance + 8;
     const int probeH = metrics.height() + 4;
 
@@ -62,8 +56,7 @@ void FilterChip::layoutText() const
     }
 
     if (right < left) {
-        // Nothing measurable, so fall back to the advance widths rather than
-        // collapsing the run to nothing.
+
         m_runLeft = 0;
         m_runWidth = m_labelAdvance + kGap + m_countAdvance;
         return;
@@ -92,26 +85,19 @@ int FilterChip::rightInset() const
 
 QSize FilterChip::sizeHint() const
 {
-    // Measured every time rather than cached: the first call can happen before
-    // the widget's font is resolved, and a cached zero-width result would then
-    // stick for the life of the chip.
+
     layoutText();
     const QFontMetrics metrics(font());
-    // Sized from the advance widths, which include the bearings the ink does
-    // not fill. That leaves a little breathing room at both ends, and because
-    // the run is centred inside this width the two ends stay equal.
+
     const int w = kPadX * 2 + m_labelAdvance + kGap + m_countAdvance;
-    // Matches the buttons and fields beside it in the toolbar. Derived from the
-    // font only, a chip came out several pixels shorter and the row looked
-    // ragged; the font height is still a floor so the text can never clip.
+
     const int h = qMax(Metrics::kBarControlHeight, metrics.height() + 4);
     return QSize(w, h);
 }
 
 void FilterChip::enterEvent(QEnterEvent *event)
 {
-    // paintEvent brightens the pill when underMouse() is true, so the widget has
-    // to be repainted when that answer changes.
+
     update();
     QPushButton::enterEvent(event);
 }
@@ -130,8 +116,6 @@ void FilterChip::paintEvent(QPaintEvent *)
     painter.setRenderHint(QPainter::Antialiasing, true);
     painter.setRenderHint(QPainter::TextAntialiasing, true);
 
-    // Fully rounded ends: half the height, so the pill never looks like a
-    // rectangle with clipped corners at any chip height.
     const QRectF r = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
     const qreal radius = r.height() / 2.0;
 
@@ -154,9 +138,6 @@ void FilterChip::paintEvent(QPaintEvent *)
     painter.setBrush(fill);
     painter.drawRoundedRect(r, radius, radius);
 
-    // The run is centred on the pixels it will paint, so the gap either side of
-    // the text is equal. runLeft cancels the bearing the first glyph carries, so
-    // the ink starts exactly where the measurement said it would.
     const int runStart = (width() - m_runWidth) / 2 - m_runLeft;
 
     painter.setFont(font());
@@ -164,8 +145,6 @@ void FilterChip::paintEvent(QPaintEvent *)
     painter.drawText(QRectF(runStart, 0, m_countOriginX, height()),
                      Qt::AlignLeft | Qt::AlignVCenter, m_label);
 
-    // The count is dimmer while switched on, and muted further when off, so it
-    // never competes with the label it belongs to.
     QColor countColor = m_countColor;
     if (!on)
         countColor = QColor(QStringLiteral("#5f666e"));

@@ -1,4 +1,4 @@
-// Regression checks for the bugs fixed in this pass. Development helper only.
+
 #include <QApplication>
 #include <QComboBox>
 #include <QLineEdit>
@@ -39,9 +39,6 @@ int main(int argc, char *argv[])
     app.setApplicationName(QStringLiteral("CairnAuditTest"));
     app.setOrganizationName(QStringLiteral("CairnAuditTest"));
 
-    // ---------------------------------------------------------------- bug 1/2
-    // Hiding the kind of the selected item must clear the selection rather than
-    // leaving the inspector describing something that is no longer drawn.
     {
         out << "== selection is dropped when its kind is filtered out ==\n";
 
@@ -62,15 +59,12 @@ int main(int argc, char *argv[])
         view.resize(800, 600);
         view.setSession(s);
 
-        // The first arrow press selects the first tile, so press twice to land
-        // on the archive that sits below it.
         view.moveSelection(0, 1);
         view.moveSelection(0, 1);
         const QString selected = view.selectedPath();
         check(selected == QStringLiteral("b.zip"),
               QStringLiteral("the archive is selected (%1)").arg(selected));
 
-        // Hide archives. The selection cannot survive.
         QHash<int, bool> filter;
         filter.insert(int(Kind::Archive), false);
         view.setKindFilter(filter);
@@ -79,15 +73,11 @@ int main(int argc, char *argv[])
               QStringLiteral("selection clears when its kind is hidden (%1)")
                   .arg(view.selectedPath()));
 
-        // Restoring the kind must not resurrect the old selection.
         view.setKindFilter(QHash<int, bool>());
         check(view.selectedPath().isEmpty(),
               QStringLiteral("selection stays cleared after the filter is removed"));
     }
 
-    // ------------------------------------------------- selection signal contract
-    // The window relies on entrySelected("") meaning "nothing selected" so the
-    // inspector can fall back to the session summary.
     {
         out << "\n== clearing emits an empty path ==\n";
         Session s;
@@ -114,9 +104,6 @@ int main(int argc, char *argv[])
                   .arg(emissions));
     }
 
-    // ---------------------------------------------------------------- bug 4
-    // Presenting the same session twice must not leave the window in a state
-    // where a third present resets anything, and presenting must be idempotent.
     {
         out << "\n== presenting the same session repeatedly is stable ==\n";
 

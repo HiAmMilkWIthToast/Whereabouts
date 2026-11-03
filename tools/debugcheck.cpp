@@ -1,4 +1,4 @@
-// Regressions for the bugs found in this pass. Development helper only.
+
 #include <QApplication>
 #include <QLineEdit>
 #include <QPushButton>
@@ -57,10 +57,6 @@ int main(int argc, char *argv[])
     app.setApplicationName(QStringLiteral("CairnDebugTest"));
     app.setOrganizationName(QStringLiteral("CairnDebugTest"));
 
-    // ------------------------------------------------------------------ BUG 1
-    // Escape used to leave the inspector describing the entry that was
-    // deselected, because the window's handler found no match for "" and did
-    // nothing at all.
     {
         out << "== Escape clears the inspector ==\n";
 
@@ -84,8 +80,6 @@ int main(int argc, char *argv[])
               QStringLiteral("inspector falls back to the summary after Escape"));
     }
 
-    // ------------------------------------------------------------------ BUG 2
-    // Typing a search that hides the selected item used to keep it selected.
     {
         out << "\n== a search that hides the selection drops it ==\n";
 
@@ -93,7 +87,7 @@ int main(int argc, char *argv[])
         view.setSession(sampleSession());
 
         view.moveSelection(0, 1);
-        view.moveSelection(0, 1);   // land on beta.zip
+        view.moveSelection(0, 1);
         check(view.selectedPath() == QStringLiteral("beta.zip"),
               QStringLiteral("beta.zip is selected (%1)").arg(view.selectedPath()));
 
@@ -102,7 +96,6 @@ int main(int argc, char *argv[])
         QObject::connect(&view, &LayoutView::entrySelected,
                          [&](const QString &p) { emitted = p; ++emissions; });
 
-        // "alpha" hides beta.zip.
         view.setSearch(QStringLiteral("alpha"));
         check(view.selectedPath().isEmpty(),
               QStringLiteral("selection drops when search hides it (%1)")
@@ -110,14 +103,11 @@ int main(int argc, char *argv[])
         check(emissions == 1 && emitted.isEmpty(),
               QStringLiteral("and it reports an empty selection"));
 
-        // Clearing the search must not resurrect the old selection.
         view.setSearch(QString());
         check(view.selectedPath().isEmpty(),
               QStringLiteral("selection stays clear after clearing the search"));
     }
 
-    // ------------------------------------------------------------------ BUG 3
-    // A live refresh used to reset the zoom, discarding the user's view.
     {
         out << "\n== a live refresh keeps the user's zoom ==\n";
 
@@ -130,7 +120,6 @@ int main(int argc, char *argv[])
         check(qFuzzyCompare(view.zoom(), 2.0),
               QStringLiteral("zoom applied (%1)").arg(view.zoom()));
 
-        // Refreshing in place: resetView=false.
         Session refreshed = sampleSession();
         refreshed.entries << ent(QStringLiteral("delta.md"), Kind::Document,
                                  QStringLiteral("md"), 3, 0);
@@ -141,16 +130,12 @@ int main(int argc, char *argv[])
         check(view.visiblePaths().size() == 4,
               QStringLiteral("the new item is shown (%1)").arg(view.visiblePaths().size()));
 
-        // Opening a new session still fits it, which is the behaviour that
-        // matters for the normal case.
         view.setSession(sampleSession());
         check(!qFuzzyCompare(view.zoom(), 2.0),
               QStringLiteral("opening a session still refits (%1)").arg(view.zoom()));
         Q_UNUSED(initial)
     }
 
-    // ------------------------------------------------------------------ BUG 4
-    // The chip row must not accumulate widgets across sessions.
     {
         out << "\n== the chip row does not accumulate ==\n";
 
@@ -159,7 +144,6 @@ int main(int argc, char *argv[])
         const int first = window.findChildren<FilterChip *>().size();
         check(first == 3, QStringLiteral("three kinds make three chips (%1)").arg(first));
 
-        // A single-kind session hides the row; going back must not leave extras.
         Session one;
         one.id = QStringLiteral("one");
         one.name = QStringLiteral("One");
@@ -177,9 +161,6 @@ int main(int argc, char *argv[])
               QStringLiteral("back to three chips, no leftovers (%1)").arg(again));
     }
 
-    // ------------------------------------------------------------------ BUG 5
-    // The hover state must repaint; verified by construction that the handlers
-    // exist and that hover does not crash or change the check state.
     {
         out << "\n== chip hover repaints without changing state ==\n";
         FilterChip chip(QStringLiteral("Folder"), 3);
@@ -197,11 +178,9 @@ int main(int argc, char *argv[])
               QStringLiteral("leaving does not toggle the chip"));
     }
 
-    // ---------------------------------------------- clock and welcome message
     {
         out << "\n== the greeting and the clock ==\n";
 
-        // The greeting has to follow the clock, not a stored setting.
         check(SystemInfo::greetingFor(QTime(8, 30)) == QStringLiteral("Good morning"),
               QStringLiteral("morning greeting (%1)")
                   .arg(SystemInfo::greetingFor(QTime(8, 30))));
@@ -211,12 +190,10 @@ int main(int argc, char *argv[])
         check(SystemInfo::greetingFor(QTime(21, 15)) == QStringLiteral("Good evening"),
               QStringLiteral("evening greeting (%1)")
                   .arg(SystemInfo::greetingFor(QTime(21, 15))));
-        // An invalid time must not silently pick a slot.
+
         check(!SystemInfo::greetingFor(QTime()).isEmpty(),
               QStringLiteral("an invalid time still yields a greeting"));
 
-        // USERNAME is what the profile folder is named after, so the greeting
-        // name is checked against it rather than against a constant.
         const QString who = SystemInfo::userName();
         check(!who.isEmpty(), QStringLiteral("the user name is detectable (%1)").arg(who));
         const QByteArray env = qgetenv("USERNAME");
@@ -225,8 +202,7 @@ int main(int argc, char *argv[])
                   QStringLiteral("the name matches the account (%1 vs %2)")
                       .arg(who, QString::fromLocal8Bit(env)));
         }
-        // A truncated display name ("c j" was the observed failure) arrives as a
-        // fragment of the real one, so length is the cheap guard against it.
+
         check(who.isEmpty() || who.size() >= 2,
               QStringLiteral("the name is not a fragment (len %1)").arg(who.size()));
 
@@ -247,10 +223,10 @@ int main(int argc, char *argv[])
             bool clockShown = false;
             bool dateShown = false;
             for (QLabel *l : status->findChildren<QLabel *>()) {
-                // HH:mm:ss, so the clock is the only text with two colons.
+
                 if (l->text().count(QLatin1Char(':')) == 2)
                     clockShown = true;
-                // The date carries the current year.
+
                 if (l->text().contains(QString::number(QDate::currentDate().year())))
                     dateShown = true;
             }

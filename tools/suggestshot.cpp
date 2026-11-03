@@ -1,4 +1,4 @@
-// Renders the search box with its list open, for inspection. Dev helper only.
+
 #include <QApplication>
 #include <QImage>
 #include <QLineEdit>
@@ -77,7 +77,6 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    // Clicking into the box is how the list is meant to be discovered.
     box->setFocus();
     pump(250);
 

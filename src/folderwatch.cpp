@@ -8,13 +8,9 @@
 #include <QTimer>
 
 namespace {
-// A rename or delete arrives as several notifications in a burst; one settled
-// re-scan is much cheaper than one per notification.
+
 constexpr int kDebounceMs = 250;
 
-// How often the desktop's icon positions are re-read. Dragging an icon is a
-// deliberate, human-paced action, so a poll every second reads as immediate
-// without burning a shell call more often than needed.
 constexpr int kPositionPollMs = 1000;
 }
 
@@ -51,10 +47,6 @@ void FolderWatcher::watch(const QString &path)
 
     m_watcher->addPath(m_path);
 
-    // Dragging an icon changes no file, so on the desktop the filesystem
-    // watcher alone would miss it. Take a baseline now and compare later; the
-    // first comparison must not report a change, or every open would look like
-    // one.
     if (SessionStore::isDesktopPath(m_path)) {
         DesktopPositions::Geometry geometry;
         m_lastPositions = DesktopPositions::read(nullptr, &geometry);
@@ -90,7 +82,7 @@ bool FolderWatcher::isPollingPositions() const
 
 void FolderWatcher::arm()
 {
-    // Restarting the timer collapses a burst into a single report.
+
     m_debounce->start();
 }
 
@@ -105,7 +97,6 @@ void FolderWatcher::pollPositions()
         return;
     }
 
-    // Cheap equality first: the common case is that nothing moved.
     if (now == m_lastPositions)
         return;
 
@@ -115,21 +106,16 @@ void FolderWatcher::pollPositions()
 
 void FolderWatcher::onNotification()
 {
-    // The operating system drops the watch when the folder is deleted or
-    // renamed away, so it has to be re-added by hand. Otherwise the app would
-    // silently stop updating after the user moved the folder it was showing.
+
     if (QFileInfo(m_path).isDir()) {
         if (!m_watcher->directories().contains(m_path) && !m_path.isEmpty())
             m_watcher->addPath(m_path);
     } else {
-        // Gone: report it once and leave the watch off. The window shows the
-        // missing-folder state rather than a stale map.
+
         m_watcher->removePaths(m_watcher->directories());
         m_positionPoll->stop();
     }
 
-    // A file-level change can also move icons (creating a file reflows the
-    // grid), so refresh the baseline to avoid reporting the same change twice.
     if (m_positionPoll->isActive()) {
         DesktopPositions::Geometry geometry;
         m_lastPositions = DesktopPositions::read(nullptr, &geometry);

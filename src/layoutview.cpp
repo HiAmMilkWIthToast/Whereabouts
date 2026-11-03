@@ -16,10 +16,6 @@
 
 namespace {
 
-// Tile metrics at zoom 1. A desktop cell is roughly 75x98 at 100% scaling, and
-// the map keeps that proportion so the result reads as the same layout. The
-// width is a little wider than a real cell because a desktop icon shows only a
-// wrap of its name, while these tiles show one line and need room for it.
 constexpr qreal kTileWidth = 106.0;
 constexpr qreal kTileHeight = 78.0;
 constexpr qreal kTileGap = 8.0;
@@ -28,7 +24,7 @@ constexpr qreal kIconSize = 20.0;
 constexpr qreal kListRowHeight = 30.0;
 constexpr qreal kMargin = 18.0;
 
-} // namespace
+}
 
 LayoutView::LayoutView(QWidget *parent)
     : QAbstractScrollArea(parent)
@@ -38,8 +34,7 @@ LayoutView::LayoutView(QWidget *parent)
     setMouseTracking(true);
     viewport()->setMouseTracking(true);
     viewport()->setCursor(Qt::ArrowCursor);
-    // Arrow keys and Escape are handled here, so the view has to be able to
-    // take focus. Clicking it or tabbing to it both work.
+
     setFocusPolicy(Qt::StrongFocus);
     setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
@@ -52,10 +47,6 @@ void LayoutView::setSession(const Session &session)
     setSession(session, true);
 }
 
-// `resetView` is false when the same session is merely being refreshed in
-// place. Opening a session should fit it to the window, but a live update must
-// not: the items are the same arrangement of the same folder, and discarding the
-// user's zoom because one file appeared would be a surprise.
 void LayoutView::setSession(const Session &session, bool resetView)
 {
     m_session = session;
@@ -79,9 +70,7 @@ void LayoutView::setMode(Mode mode)
     if (m_mode == mode)
         return;
     m_mode = mode;
-    // The two modes do not share a coordinate space: the map scrolls in zoomed
-    // canvas pixels and the list in rows, so carrying an offset across the
-    // switch lands on an unrelated place in the new layout.
+
     resetScroll();
     rebuild();
     if (m_mode == Mode::Map)
@@ -99,10 +88,6 @@ void LayoutView::setKindFilter(const QHash<int, bool> &enabledByKind)
     dropSelectionIfHidden();
 }
 
-// A filter or a search change can hide the item that is selected. Leaving it
-// selected would keep the inspector describing something no longer on screen
-// and leave arrow keys with no starting point, so the selection is dropped and
-// the window is told to fall back to the session summary.
 void LayoutView::dropSelectionIfHidden()
 {
     if (m_selectedPath.isEmpty())
@@ -133,8 +118,7 @@ void LayoutView::setSort(Sort sort, bool descending)
         return;
     m_sort = sort;
     m_sortDescending = descending;
-    // Only the list has an order to change; map mode is positional, so it does
-    // not need to redo anything.
+
     if (m_mode == Mode::List) {
         rebuildList();
         emit viewChanged();
@@ -182,10 +166,6 @@ void LayoutView::rebuildMap()
     const int cellW = qMax(1, cell.width());
     const int cellH = qMax(1, cell.height());
 
-    // A live capture stores the pixel position but not a grid cell, and the cell
-    // is deliberately left out of the file to keep it readable. Deriving it here
-    // keeps reloaded sessions identical to freshly captured ones; using the
-    // pixel position directly is what the capture step does too.
     const auto effectiveCell = [&](const Entry &entry) -> QPoint {
         if (entry.cell.x() >= 0 && entry.cell.y() >= 0)
             return entry.cell;
@@ -208,11 +188,6 @@ void LayoutView::rebuildMap()
     if (maxCell.x() == INT_MIN)
         maxCell = QPoint(0, 0);
 
-    // A desktop usually has one or two icons dragged far from the rest, and
-    // honouring the empty space between them would shrink everything to
-    // illegibility. Columns and rows that hold nothing are therefore collapsed,
-    // keeping order and adjacency; the exact coordinates are still reported by
-    // the inspector for any selected item.
     QSet<int> usedCols;
     QSet<int> usedRows;
     for (const Entry &entry : m_session.entries) {
@@ -247,14 +222,6 @@ void LayoutView::rebuildMap()
     const qreal stepX = kTileWidth + kTileGap;
     const qreal stepY = kTileHeight + kTileGap;
 
-    // Explorer positions are the top-left of the icon, not the cell, so they are
-    // folded into the same grid the computed layout uses. This keeps mixed
-    // sessions (some live, some computed) coherent.
-    //
-    // Two icons sitting a few pixels apart on a desktop with grid alignment off
-    // round into the same cell. Drawing both there put one tile exactly on top
-    // of the other, hiding it completely and making it impossible to select. A
-    // cell that is already taken now pushes the later item down a row.
     QSet<qint64> occupied;
     int maxCol = 0;
     int maxRow = 0;
@@ -292,12 +259,9 @@ void LayoutView::rebuildMap()
             : QStringLiteral("No items match \"%1\".").arg(m_search);
     }
 
-    // Sized from the cells actually used, after any collision nudging, so a
-    // tile can never be laid out beyond the scrollable canvas.
     const qreal width = kMargin * 2 + (maxCol + 1) * stepX - kTileGap;
     const qreal height = kMargin * 2 + (maxRow + 1) * stepY - kTileGap;
-    // The canvas is virtual: only the scrollbars know about its extent, so the
-    // widget itself can stay as small as the window wants.
+
     m_canvasSize = QSizeF(qMax(width, stepX), qMax(height, stepY));
 
     updateScrollRanges();
@@ -319,9 +283,7 @@ void LayoutView::rebuildList()
         if (isVisible(entry))
             visible.append(entry);
     }
-    // Folders always sort ahead of files, then within each group by the chosen
-    // key. Interleaving a folder between files by name reads worse than keeping
-    // the two groups apart, which is also how Explorer presents them.
+
     const Sort sort = m_sort;
     const bool descending = m_sortDescending;
     std::stable_sort(visible.begin(), visible.end(),
@@ -337,9 +299,7 @@ void LayoutView::rebuildList()
                              cmp = a.name.compare(b.name, Qt::CaseInsensitive);
                              break;
                          case Sort::Size:
-                             // A folder's size is a capped directory total, so it
-                             // is not comparable with a file; break the tie by
-                             // name to keep the order stable.
+
                              cmp = a.size == b.size ? 0 : (a.size < b.size ? -1 : 1);
                              break;
                          case Sort::Modified:
@@ -416,8 +376,7 @@ void LayoutView::updateScrollRanges()
 
 void LayoutView::resetScroll()
 {
-    // setValue() runs scrollContentsBy(), which only moves the origin; the
-    // caller rebuilds and refreshes the ranges straight after.
+
     horizontalScrollBar()->setValue(0);
     verticalScrollBar()->setValue(0);
 }
@@ -433,7 +392,6 @@ void LayoutView::updateOrigin()
     const int extraX = qMax(0, int(scaled.width() - viewport()->width()));
     const int extraY = qMax(0, int(scaled.height() - viewport()->height()));
 
-    // Centre the canvas until it is larger than the viewport.
     const qreal offsetX = extraX > 0 ? -horizontalScrollBar()->value()
                                      : (viewport()->width() - scaled.width()) / 2.0;
     const qreal offsetY = extraY > 0 ? -verticalScrollBar()->value()
@@ -445,12 +403,7 @@ void LayoutView::scrollContentsBy(int dx, int dy)
 {
     Q_UNUSED(dx);
     Q_UNUSED(dy);
-    // paintEvent draws from m_origin, not from the scrollbars, so moving a bar
-    // has to recompute it. Without this the bars carried the right range and
-    // both the wheel and the handle did nothing: the viewport repainted the
-    // same pixels, so neither the map nor the list could be scrolled at all.
-    // Only the origin is recomputed here; recomputing the ranges from inside a
-    // scroll would feed the bars back into themselves.
+
     updateOrigin();
     viewport()->update();
 }
@@ -466,9 +419,7 @@ void LayoutView::fitToView()
     const qreal availableH = qMax(60.0, viewport()->height() - pad * 2);
     qreal fit = qMin(availableW / m_canvasSize.width(),
                      availableH / m_canvasSize.height());
-    // Never magnify past 1:1; a two-item snapshot should not become two huge
-    // tiles. The floor keeps names legible: below it the map scrolls instead of
-    // shrinking further.
+
     m_zoom = qBound(0.55, qMin(fit, 1.0), 2.4);
     m_panOffset = QPointF(0, 0);
     m_userZoomed = false;
@@ -511,10 +462,7 @@ QList<QString> LayoutView::visiblePaths() const
 
 QHash<QString, QRectF> LayoutView::tileRects() const
 {
-    // m_origin already includes the scroll offset (see updateScrollRanges), so
-    // it must not be subtracted again here. Doing so moved every reported
-    // rectangle by the scroll amount and made these rectangles disagree with
-    // what paintEvent actually drew.
+
     const qreal scale = canvasScale();
     QHash<QString, QRectF> rects;
     rects.reserve(m_tiles.size());
@@ -530,14 +478,11 @@ QHash<QString, QRectF> LayoutView::tileRects() const
 
 int LayoutView::hitTest(const QPointF &viewportPos) const
 {
-    // The scale is always positive in practice, but a zero here would turn
-    // every coordinate into a NaN and silently break clicking, so guard it.
+
     const qreal scale = canvasScale();
     if (scale <= 0.0)
         return -1;
-    // Tiles are stored in canvas space; convert the pointer instead of moving
-    // every tile on every scroll. In list mode the scale is 1: dividing by the
-    // map's zoom here picked a row several places below the one clicked.
+
     const QPointF canvasPos = (viewportPos - m_origin) / scale;
     for (int i = 0; i < m_tiles.size(); ++i) {
         if (m_tiles.at(i).rect.contains(canvasPos))
@@ -575,9 +520,7 @@ void LayoutView::mousePressEvent(QMouseEvent *event)
         }
         viewport()->update();
     } else {
-        // Dragging empty canvas pans the map. The pan already in effect is kept
-        // as the new baseline, so a second drag continues from where the first
-        // left off instead of snapping the view back.
+
         m_dragging = true;
         m_dragStart = event->pos();
         m_panStartOffset = m_panOffset;
@@ -594,8 +537,7 @@ void LayoutView::mouseMoveEvent(QMouseEvent *event)
         viewport()->update();
         return;
     }
-    // Both modes: the list paints a hover row as well, and leaving this to the
-    // map alone meant the list never highlighted anything under the pointer.
+
     updateHover(event->pos());
 }
 
@@ -639,8 +581,7 @@ void LayoutView::wheelEvent(QWheelEvent *event)
 
 QString LayoutView::elided(const QString &text, const QFont &font, qreal width) const
 {
-    // Right-elide: the start of a file name is what identifies it, and the
-    // extension is repeated in the tile's metadata line below.
+
     return QFontMetrics(font).elidedText(text, Qt::ElideRight, int(width));
 }
 
@@ -659,7 +600,6 @@ void LayoutView::ensureSelectionVisible()
     if (index < 0)
         return;
 
-    // Where the tile actually sits once scaled and offset.
     const qreal scale = canvasScale();
     const QRectF tile = m_tiles.at(index).rect;
     const QRectF onScreen(m_origin.x() + tile.x() * scale,
@@ -702,7 +642,6 @@ bool LayoutView::moveSelection(int dx, int dy)
         return true;
     };
 
-    // Current position; -1 when nothing is selected yet.
     int current = -1;
     for (int i = 0; i < m_tiles.size(); ++i) {
         if (m_tiles.at(i).path == m_selectedPath) {
@@ -712,13 +651,12 @@ bool LayoutView::moveSelection(int dx, int dy)
     }
 
     if (current < 0) {
-        // First arrow press selects the first visible tile.
+
         return select(0);
     }
 
     if (m_mode == Mode::List) {
-        // The list is a single column, so up/down walk it and left/right do
-        // nothing. Wrapping at the ends makes long lists quick to traverse.
+
         if (dy == 0 && dx != 0)
             return false;
         int next = current + (dy > 0 ? 1 : -1);
@@ -729,8 +667,6 @@ bool LayoutView::moveSelection(int dx, int dy)
         return select(next);
     }
 
-    // Map mode: pick the nearest tile in the wanted direction, which handles
-    // irregular spacing far better than moving by a fixed index step.
     const QRectF from = m_tiles.at(current).rect;
     const QPointF origin = from.center();
     int best = -1;
@@ -743,7 +679,6 @@ bool LayoutView::moveSelection(int dx, int dy)
         const qreal ddx = other.x() - origin.x();
         const qreal ddy = other.y() - origin.y();
 
-        // Must be in the pressed direction.
         if (dx > 0 && ddx <= 0.0)
             continue;
         if (dx < 0 && ddx >= 0.0)
@@ -753,8 +688,6 @@ bool LayoutView::moveSelection(int dx, int dy)
         if (dy < 0 && ddy >= 0.0)
             continue;
 
-        // Weight the off-axis distance so a tile directly ahead beats a nearer
-        // one diagonally off to the side.
         const qreal along = qAbs(dx != 0 ? ddx : ddy);
         const qreal across = qAbs(dx != 0 ? ddy : ddx);
         const qreal distance = along + across * 2.0;
@@ -765,8 +698,7 @@ bool LayoutView::moveSelection(int dx, int dy)
     }
 
     if (best < 0) {
-        // Nothing further in that direction: wrap to the far side, which keeps
-        // arrow keys useful in a sparse layout.
+
         for (int i = 0; i < m_tiles.size(); ++i) {
             if (i == current)
                 continue;
@@ -834,9 +766,6 @@ void LayoutView::paintEvent(QPaintEvent *)
     p.setRenderHint(QPainter::Antialiasing);
     p.fillRect(viewport()->rect(), QColor(QStringLiteral("#0b0d10")));
 
-    // Draw the empty state whenever there is nothing to show. This used to be
-    // gated on the session also being empty, so filtering every item out left a
-    // blank canvas with no explanation of why.
     if (m_tiles.isEmpty()) {
         p.setPen(QColor(QStringLiteral("#4f555e")));
         QFont f = font();
@@ -851,8 +780,6 @@ void LayoutView::paintEvent(QPaintEvent *)
         p.translate(m_origin);
         p.scale(m_zoom, m_zoom);
 
-        // A faint grid, so relative positions are legible even when the layout
-        // is sparse. It is a backdrop, not information.
         if (m_zoom > 0.4) {
             const qreal stepX = (kTileWidth + kTileGap);
             const qreal stepY = (kTileHeight + kTileGap);
@@ -900,8 +827,6 @@ void LayoutView::paintEvent(QPaintEvent *)
             p.drawRoundedRect(tile.rect.adjusted(0.5, 0.5, -0.5, -0.5),
                               kTileRadius, kTileRadius);
 
-            // Kind stripe: a 2px bar at the left edge, which is enough to read
-            // the type at a glance without colouring the whole tile.
             QPainterPath stripe;
             stripe.addRoundedRect(QRectF(tile.rect.left() + 0.5,
                                          tile.rect.top() + 7.0, 2.0,
@@ -947,15 +872,14 @@ void LayoutView::paintEvent(QPaintEvent *)
                        elided(meta, metaFont, textWidth));
 
             if (tile.viaShell) {
-                // A dot marking a position that came from the real desktop
-                // rather than the computed grid.
+
                 p.setPen(Qt::NoPen);
                 p.setBrush(QColor(QStringLiteral("#5f7a63")));
                 p.drawEllipse(QPointF(tile.rect.right() - 12.0,
                                       tile.rect.bottom() - 12.0), 2.0, 2.0);
             }
         } else {
-            // List mode: one dense row per item.
+
             QRectF row = tile.rect.adjusted(0, 1, 0, -1);
             if (selected) {
                 p.setPen(QPen(Theme::accent(), 1.0));

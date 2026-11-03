@@ -1,5 +1,4 @@
-// Renders the window before and after a live change, so the feature can be
-// seen rather than only asserted in numbers. Development helper only.
+
 #include <QApplication>
 #include <QDir>
 #include <QEventLoop>
@@ -67,7 +66,6 @@ int main(int argc, char *argv[])
     pump(300);
     save(&window, QStringLiteral("preview/live-before.png"));
 
-    // Something arrives in the folder while the window is open.
     writeFile(root + QStringLiteral("/just_appeared.png"), "image");
     writeFile(root + QStringLiteral("/new-folder-here.tmp"), "x");
     pump(1300);

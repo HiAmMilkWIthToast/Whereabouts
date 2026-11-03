@@ -1,6 +1,4 @@
-// End-to-end check of the session pipeline without a visible window:
-// capture the desktop, save it, reload it, and confirm the map can lay it out.
-// Development helper only.
+
 #include <QApplication>
 #include <QDir>
 #include <QFile>
@@ -51,7 +49,6 @@ int main(int argc, char *argv[])
     check(live > 0, QStringLiteral("%1 of %2 entries have live positions")
                         .arg(live).arg(captured.entries.size()));
 
-    // Kinds must reflect content, not just names.
     bool hasArchive = false;
     bool hasExecutable = false;
     for (const Entry &entry : captured.entries) {
@@ -86,7 +83,6 @@ int main(int argc, char *argv[])
     check(loaded.livePositions == captured.livePositions,
           QStringLiteral("layout source survives"));
 
-    // The file must be self-describing, never a copy of the folder's contents.
     QFile raw(path);
     if (!raw.open(QIODevice::ReadOnly)) {
         check(false, QStringLiteral("session file can be read back"));
@@ -106,9 +102,6 @@ int main(int argc, char *argv[])
     check(visible.size() == loaded.entries.size(),
           QStringLiteral("every entry gets a tile"));
 
-    // Regression: a live capture omits the grid cell from the file, so the view
-    // must derive it from the pixel position. When it did not, every tile landed
-    // on the same spot and only one was visible after a reload.
     const QHash<QString, QRectF> rects = view.tileRects();
     check(rects.size() == loaded.entries.size(),
           QStringLiteral("the view reports a rectangle per tile"));

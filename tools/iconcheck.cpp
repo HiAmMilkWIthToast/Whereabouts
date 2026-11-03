@@ -1,9 +1,4 @@
-// Checks that every icon in the enum actually has artwork, and that none of it
-// is an empty or unparsable path. Development helper only.
-//
-// svgFor() is a switch with no default, so adding an Id and forgetting the case
-// compiles cleanly and renders nothing: an invisible button, with no warning.
-// That is the failure this catches.
+
 #include <QApplication>
 #include <QImage>
 #include <QPixmap>
@@ -32,9 +27,6 @@ static void check(bool ok, const QString &what)
         ++failures;
 }
 
-
-// A small session built in memory: enough kinds to populate the header, and
-// nothing read from disk, so the check works on a clean machine.
 static Session iconcheckSession()
 {
     static const auto make = [] {
@@ -59,7 +51,6 @@ static Session iconcheckSession()
     }();
     return make;
 }
-
 
 static QString nameOf(Icons::Id id)
 {
@@ -96,9 +87,6 @@ int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
 
-    // The list is written out rather than derived, because the enum has no
-    // sentinel to count to. If an Id is added and not listed here, the count
-    // check below runs one short -- so the enum size is asserted too.
     const QList<Icons::Id> all = {
         Icons::Id::Cairn, Icons::Id::CairnCompact, Icons::Id::Layout,
         Icons::Id::Folder, Icons::Id::File, Icons::Id::Archive,
@@ -117,8 +105,6 @@ int main(int argc, char *argv[])
         if (svg.isEmpty())
             continue;
 
-        // Parsed, not just non-empty: a malformed path renders blank in the UI
-        // while the string looks fine.
         const QPixmap mask = Icons::alphaMask(id, 24);
         QImage img = mask.toImage();
         bool inked = false;
@@ -137,8 +123,7 @@ int main(int argc, char *argv[])
 
     out << QLatin1Char(10) << "== glyphs are legible when small ==" << QLatin1Char(10);
     {
-        // The UI uses these at 12 to 17px. Below that they are never drawn, so
-        // that is the floor worth asserting.
+
         bool ok = true;
         for (Icons::Id id : all) {
             const QPixmap p = Icons::render(id, 12, Theme::accent(), 1.0);
@@ -150,14 +135,9 @@ int main(int argc, char *argv[])
         check(ok, QStringLiteral("every icon renders at 12px"));
     }
 
-
     out << QLatin1Char(10) << "== the buttons that carry them ==" << QLatin1Char(10);
     {
-        // Built through the real window so the object names, and therefore the
-        // stylesheet rules behind the colours, are the ones the app uses.
-        // The detail page, where every one of these buttons is on screen at
-        // once; the library page hides most of them, so hovering there would
-        // compare two blank images and pass while proving nothing.
+
         MainWindow window;
         window.resize(1000, 640);
         window.presentSession(iconcheckSession());
@@ -171,8 +151,6 @@ int main(int argc, char *argv[])
               QStringLiteral("the header buttons carry icons (%1)")
                   .arg(buttons.size()));
 
-        // Only a shown widget paints: grabbing a hidden one returns the same
-        // blank image twice and the comparison proves nothing.
         int hovered = 0;
         for (IconTextButton *b : buttons) {
             check(!b->toolTip().isEmpty(),
@@ -181,10 +159,6 @@ int main(int argc, char *argv[])
             if (!b->isVisible())
                 continue;
 
-            // The colour the glyph and label are painted with must change on
-            // hover. Sampling rendered pixels cannot show this reliably: the
-            // sample always includes the button's background, which the
-            // stylesheet repaints whether or not the icon follows it.
             const QColor rest = b->inkColor();
             QEnterEvent enter(QPointF(2, 2), b->mapToGlobal(QPointF(2, 2)),
                               b->mapToGlobal(QPointF(2, 2)));
@@ -195,16 +169,14 @@ int main(int argc, char *argv[])
                       .arg(b->objectName(), rest.name(), after.name()));
             ++hovered;
         }
-        // The library page hides the detail-page controls; if that ever became
-        // every button, the loop above would pass while checking nothing.
+
         check(hovered >= 3,
               QStringLiteral("that was checked on %1 visible buttons").arg(hovered));
     }
 
     out << QLatin1Char(10) << "== the glyph does not collide with the word ==" << QLatin1Char(10);
     {
-        // A glyph drawn over its label is invisible in a screenshot until the
-        // strings change. Assert the geometry instead of trusting the layout.
+
         IconTextButton probe(Icons::Id::Export, QStringLiteral("Export"));
         probe.setObjectName(QStringLiteral("secondary"));
         const QFontMetrics fm(probe.font());

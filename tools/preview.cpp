@@ -1,5 +1,4 @@
-// Renders the app's windows to PNGs so the design can be inspected without a
-// desktop session. Not part of the shipped app.
+
 #include <QApplication>
 #include <QDir>
 #include <QEventLoop>
@@ -30,8 +29,6 @@ void trace(const QString &text)
         file.write((text + QLatin1Char('\n')).toUtf8());
 }
 
-// A folder that represents a real desktop: a mix of the kinds the app exists to
-// distinguish, so the map is exercised properly.
 Session sampleSession()
 {
     Session session;
@@ -83,9 +80,6 @@ Session sampleSession()
         session.entries.append(entry);
     }
 
-    // One icon dragged far away, which is what a real desktop usually looks
-    // like. The map must collapse the empty columns rather than shrink every
-    // tile to fit them.
     Entry stray;
     stray.name = QStringLiteral("idea1");
     stray.relativePath = stray.name;
@@ -117,7 +111,7 @@ void pump(int ms)
     loop.exec();
 }
 
-} // namespace
+}
 
 int main(int argc, char *argv[])
 {
@@ -125,7 +119,6 @@ int main(int argc, char *argv[])
     app.setApplicationName(QStringLiteral("CairnPreview"));
     app.setOrganizationName(QStringLiteral("Cairn"));
 
-    // Keep the preview from inheriting or overwriting the real app's settings.
     QSettings::setDefaultFormat(QSettings::IniFormat);
     QSettings::setPath(QSettings::IniFormat, QSettings::UserScope,
                        QDir::tempPath() + QStringLiteral("/cairn-preview"));
@@ -133,13 +126,12 @@ int main(int argc, char *argv[])
     app.setStyleSheet(Theme::buildStyleSheet());
 
     const QColor backdrop(QStringLiteral("#2b3138"));
-    // Its own folder, so repeated runs never litter the build directory.
+
     const QString out = QStringLiteral("preview");
     QDir().mkpath(out);
 
     trace(QStringLiteral("start"));
 
-    // ---- detail view, map mode, with an entry selected
     {
         trace(QStringLiteral("main:construct"));
         MainWindow window;
@@ -153,7 +145,6 @@ int main(int argc, char *argv[])
         window.presentSession(session);
         trace(QStringLiteral("main:presented"));
 
-        // Select an entry so the inspector shows an item rather than the summary.
         if (inspector) {
             inspector->setEntry(&session.entries.at(0));
             trace(QStringLiteral("main:inspector set"));
@@ -167,7 +158,6 @@ int main(int argc, char *argv[])
         window.hide();
     }
 
-    // ---- the layout map on its own, large, so the tiles can be judged
     {
         auto *view = new LayoutView;
         view->resize(760, 470);
@@ -179,7 +169,6 @@ int main(int argc, char *argv[])
         trace(QStringLiteral("map:saved"));
     }
 
-    // ---- list mode
     {
         auto *view = new LayoutView;
         view->resize(560, 420);
@@ -192,7 +181,6 @@ int main(int argc, char *argv[])
         trace(QStringLiteral("list:saved"));
     }
 
-    // ---- inspector on its own
     {
         auto *inspector = new Inspector;
         inspector->resize(Metrics::kInspectorWidth, 470);
@@ -206,7 +194,6 @@ int main(int argc, char *argv[])
         trace(QStringLiteral("inspector:saved"));
     }
 
-    // ---- first-run dialog
     {
         OnboardingDialog dialog(SessionStore::desktopPath(), true);
         dialog.show();

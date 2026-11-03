@@ -49,7 +49,6 @@
 
 namespace {
 
-// A card in the library list: name, when it was taken, and what is in it.
 class SessionCard : public QWidget
 {
 public:
@@ -102,8 +101,6 @@ public:
     }
 };
 
-// Shell "show in folder" with the file selected. Falls back to opening the
-// folder when the item no longer exists, which is common for old snapshots.
 void revealInShell(const QString &path)
 {
 #ifdef Q_OS_WIN
@@ -125,7 +122,7 @@ void revealInShell(const QString &path)
 #endif
 }
 
-} // namespace
+}
 
 MainWindow::MainWindow(QWidget *parent)
     : ChromeWindow(parent)
@@ -133,9 +130,6 @@ MainWindow::MainWindow(QWidget *parent)
     setWindowTitle(QStringLiteral("Cairn"));
     resize(1040, 660);
 
-    // Restore the last size and position. Without a check the window could come
-    // back entirely off-screen after a monitor was unplugged, so the saved
-    // geometry is only used when it still lands on an attached screen.
     const QByteArray saved = QSettings()
         .value(QStringLiteral("window/libraryGeometry")).toByteArray();
     if (!saved.isEmpty()) {
@@ -181,9 +175,6 @@ MainWindow::MainWindow(QWidget *parent)
         }
     });
 
-    // Live updates: the open snapshot follows its folder while the window is
-    // showing it. Nothing is written to disk, so the saved session stays a
-    // point-in-time record until the user captures again.
     m_watcher = new FolderWatcher(this);
     connect(m_watcher, &FolderWatcher::folderChanged, this,
             &MainWindow::onFolderChanged);
@@ -210,19 +201,12 @@ QWidget *MainWindow::buildLibraryPage()
     title->setObjectName(QStringLiteral("pageTitle"));
     titles->addWidget(title);
 
-    // The stored path is long and the page is not always wide. A plain label
-    // runs on under the search box and is cut mid-word at the minimum window
-    // size, which reads as a rendering fault rather than a long name.
     auto *count = new ElidedLabel(page);
-    // A distinct name: the detail page has a #pageSubtitle of its own, and
-    // sharing the name means lookups silently get whichever comes first.
+
     count->setObjectName(QStringLiteral("librarySubtitle"));
     m_libraryCount = count;
     titles->addWidget(m_libraryCount);
 
-    // One line addressed to whoever is sitting here, so the window does not
-    // open as a bare list. The name comes from the account rather than a stored
-    // setting, and if it cannot be read the greeting simply goes unnamed.
     m_welcome = new QLabel(page);
     m_welcome->setObjectName(QStringLiteral("welcomeLine"));
     const QString user = SystemInfo::userName();
@@ -236,21 +220,13 @@ QWidget *MainWindow::buildLibraryPage()
 
     m_search = new QLineEdit(page);
     m_search->setObjectName(QStringLiteral("field"));
-    // Several inputs share the #field style; the property is what tells this
-    // one apart for tests and for anything that needs to find it by role.
+
     m_search->setProperty("role", QStringLiteral("sessionSearch"));
     m_search->setPlaceholderText(QStringLiteral("Filter sessions"));
     m_search->setFixedWidth(190);
     m_search->setClearButtonEnabled(true);
     head->addWidget(m_search, 0, Qt::AlignVCenter);
 
-    // A list laid over the page rather than a completer: a completer fills the
-    // box in with text, and what is wanted here is to open the snapshot.
-    //
-    // It is an ordinary child of the page, not a Qt::Popup window. A popup
-    // grabs the keyboard, which both took the caret out of the search box --
-    // so typing no longer reached it -- and ping-ponged focus between the two,
-    // showing and hiding the list forever.
     m_suggest = new QListView(page);
     m_suggest->setObjectName(QStringLiteral("suggestionList"));
     m_suggest->hide();
@@ -292,7 +268,7 @@ QWidget *MainWindow::buildLibraryPage()
             item->setHidden(!match);
         }
         syncSearchSuggestions();
-        // Typing is a reason to look at the list, so it opens as you go.
+
         if (!text.isEmpty())
             showSearchSuggestions();
         else
@@ -301,7 +277,7 @@ QWidget *MainWindow::buildLibraryPage()
     connect(m_suggest, &QListView::clicked, this, [this](const QModelIndex &index) {
         activateSuggestion(index.row());
     });
-    // Enter in the popup too, for anyone reaching it with the keyboard.
+
     connect(m_suggest, &QListView::activated, this, [this](const QModelIndex &index) {
         activateSuggestion(index.row());
     });
@@ -330,25 +306,13 @@ QWidget *MainWindow::buildDetailPage()
     root->setContentsMargins(Metrics::kPagePad, 14, Metrics::kPagePad, 14);
     root->setSpacing(0);
 
-    // Every control on the bar is the same height, chips included: see
-    // Metrics::kBarControlHeight.
     const int kBar = Metrics::kBarControlHeight;
 
-    // ---- header
-    // The title anchors the left of the top row and every control gathers on
-    // the right: the way back, then the field that narrows the view, then the
-    // two things that act on it. Borrowing the icons' reading order -- go back,
-    // find, change how you see it, take it away -- keeps the row legible
-    // without labels.
-    //
-    // They share the title's row rather than the filter row, so the whole bar
-    // sits level with "Desktop" instead of floating below it.
     auto *headGrid = new QGridLayout(page);
     headGrid->setContentsMargins(0, 0, 0, 0);
     headGrid->setHorizontalSpacing(12);
     headGrid->setVerticalSpacing(1);
-    // Without a stretch a QGridLayout shares spare width evenly between the
-    // columns and parks the title in the middle of the page.
+
     headGrid->setColumnStretch(0, 1);
 
     m_detailTitle = new QLabel(page);
@@ -400,18 +364,13 @@ QWidget *MainWindow::buildDetailPage()
 
     root->addLayout(headGrid);
 
-    // ---- kind filter chips, only for the kinds this session actually holds.
-    // They keep their own widget: rebuildKindFilter replaces its contents on
-    // every session, and anything sharing the layout would be deleted with it.
     m_kindBar = new QWidget(page);
     m_kindRow = new QHBoxLayout(m_kindBar);
     m_kindRow->setContentsMargins(0, 8, 0, 0);
-    // One spacing value for the whole row, so the gaps between chips are
-    // uniform instead of depending on each chip's own margins.
+
     m_kindRow->setSpacing(6);
     root->addWidget(m_kindBar);
 
-    // ---- sort control, only relevant to the list
     m_sortBar = new QWidget(page);
     auto *sortRow = new QHBoxLayout(m_sortBar);
     sortRow->setContentsMargins(0, 6, 0, 0);
@@ -451,7 +410,7 @@ QWidget *MainWindow::buildDetailPage()
     connect(m_sortDir, &QPushButton::toggled, this, [this](bool descending) {
         if (!m_layout || !m_sortBox)
             return;
-        // Keep the label honest about the direction actually in effect.
+
         m_sortDir->setLabel(descending ? QStringLiteral("Descending")
                                        : QStringLiteral("Ascending"));
         m_sortDir->setIconId(descending ? Icons::Id::SortDesc : Icons::Id::SortAsc);
@@ -462,7 +421,6 @@ QWidget *MainWindow::buildDetailPage()
 
     root->addSpacing(8);
 
-    // ---- body: map | tree | inspector
     auto *body = new QHBoxLayout;
     body->setSpacing(0);
 
@@ -493,15 +451,13 @@ QWidget *MainWindow::buildDetailPage()
     connect(back, &QPushButton::clicked, this, [this] { setPage(LibraryPage); });
     connect(m_viewToggle, &QPushButton::clicked, this, [this] {
         const bool list = m_viewToggle->isChecked();
-        // The button names the view it will switch to, so the glyph has to
-        // follow the word: grid for the map, rows for the list.
+
         m_viewToggle->setLabel(list ? QStringLiteral("Map")
                                     : QStringLiteral("List"));
         m_viewToggle->setIconId(list ? Icons::Id::Grid : Icons::Id::List);
         m_layout->setMode(list ? LayoutView::Mode::List
                                : LayoutView::Mode::Map);
-        // Sorting only affects the list, so the control appears with it instead
-        // of sitting there doing nothing in map mode.
+
         if (m_sortBar)
             m_sortBar->setVisible(list);
     });
@@ -513,9 +469,7 @@ QWidget *MainWindow::buildDetailPage()
     });
 
     connect(m_layout, &LayoutView::entrySelected, this, [this](const QString &path) {
-        // An empty path means "nothing selected" (Escape, or a filter hiding the
-        // selected item). The panel has to fall back to the session summary
-        // instead of keeping the entry that just vanished.
+
         if (path.isEmpty()) {
             m_inspector->setEntry(nullptr);
             return;
@@ -547,8 +501,7 @@ QWidget *MainWindow::buildDetailPage()
 
 void MainWindow::syncSearchSuggestions()
 {
-    // Rebuilt from the list rather than from m_sessions so the popup cannot
-    // disagree with what is on screen: one is drawn from the other.
+
     if (!m_suggestModel || !m_list)
         return;
 
@@ -556,7 +509,7 @@ void MainWindow::syncSearchSuggestions()
 
     for (int i = 0; i < m_list->count(); ++i) {
         QListWidgetItem *item = m_list->item(i);
-        // Hidden items are the ones the search has already filtered out.
+
         if (!item || item->isHidden())
             continue;
 
@@ -567,9 +520,6 @@ void MainWindow::syncSearchSuggestions()
         m_suggestModel->appendRow(row);
     }
 
-    // The popup is useless with nothing to pick, and an empty box with no
-    // explanation is worse than none at all, so the reason is spelled out. It
-    // carries no id, so picking it does nothing.
     if (m_suggestModel->rowCount() == 0) {
         const QString reason = m_list->count() == 0
             ? QStringLiteral("No snapshots yet")
@@ -580,8 +530,6 @@ void MainWindow::syncSearchSuggestions()
         m_suggestModel->appendRow(empty);
     }
 
-    // Width follows the names, but the box is the floor: a popup narrower than
-    // the thing that opened it looks broken.
     int widest = m_search ? m_search->width() : 190;
     const QFontMetrics fm(m_suggest->font());
     for (int i = 0; i < m_suggestModel->rowCount(); ++i) {
@@ -600,14 +548,10 @@ void MainWindow::showSearchSuggestions()
     const int rowHeight = qMax(24, m_suggest->fontMetrics().height() + 12);
     m_suggest->setFixedHeight(rows * rowHeight + 8);
 
-    // Hung directly below the box, left edges aligned. Coordinates are mapped
-    // into the page the list is a child of, so it follows the box if the window
-    // is resized or moved rather than hanging where the box used to be.
     auto *page = m_suggest->parentWidget();
     QPoint below = page->mapFromGlobal(
         m_search->mapToGlobal(QPoint(0, m_search->height() + 2)));
-    // At the minimum window width the box sits close to the right edge, so a
-    // list as wide as the names would hang outside the page. Slide it back.
+
     const int margin = 8;
     below.setX(qBound(margin, below.x(),
                       qMax(margin, page->width() - m_suggest->width() - margin)));
@@ -629,12 +573,10 @@ void MainWindow::activateSuggestion(int row)
 
     const QString id = m_suggestModel->item(row)->data(Qt::UserRole).toString();
     hideSearchSuggestions();
-    // The placeholder carries no id; it is there to explain, not to open.
+
     if (id.isEmpty())
         return;
 
-    // Opening is what the list itself does on a click, so the popup behaves the
-    // same way rather than introducing a second meaning for a click.
     m_search->clear();
     openSessionById(id);
 }
@@ -646,8 +588,7 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
             syncSearchSuggestions();
             showSearchSuggestions();
         } else if (event->type() == QEvent::FocusOut) {
-            // The popup is a separate window and takes focus when clicked, so
-            // that case is left to QListView::clicked rather than closing here.
+
             if (m_suggest && !m_suggest->hasFocus())
                 hideSearchSuggestions();
         } else if (event->type() == QEvent::KeyPress) {
@@ -656,7 +597,7 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
                 hideSearchSuggestions();
                 return true;
             }
-            // Down hands the choice to the popup so the arrows work from the box.
+
             if (key->key() == Qt::Key_Down && m_suggest && m_suggest->isVisible()
                 && m_suggestModel->rowCount() > 0) {
                 m_suggest->setFocus();
@@ -666,17 +607,13 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
             if ((key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter)
                 && m_suggest && m_suggest->isVisible()
                 && m_suggestModel->rowCount() > 0) {
-                // Enter with the popup open means "the obvious one": the first
-                // row, since the popup has only shown entries that already
-                // match what was typed.
+
                 activateSuggestion(0);
                 return true;
             }
         }
     }
-    // QWidget's own filter, not a call back into this override: the base class
-    // of this override is MainWindow, so naming it would re-enter and overflow
-    // the stack.
+
     return QWidget::eventFilter(watched, event);
 }
 
@@ -762,27 +699,19 @@ void MainWindow::applySession(const Session &session){
 
     m_status->setSession(QStringLiteral("%1  ·  %2").arg(session.name, session.id));
 
-    // A new session holds a different set of kinds, so stale chips would filter
-    // on types that are no longer present. This also writes the status count, so
-    // it has to run last.
     rebuildKindFilter();
     m_status->setState(session.livePositions ? QStringLiteral("live layout")
                                              : QStringLiteral("grid layout"),
                        session.livePositions);
     m_sidebar->setActive(m_openNav);
 
-    // Follow this folder from now on. An empty session (the library page) stops
-    // watching, so a stale folder cannot keep waking the app.
     if (m_watcher)
         m_watcher->watch(session.rootPath);
 }
 
 void MainWindow::onFolderChanged()
 {
-    // A missing root is the normal result of the folder being deleted or
-    // renamed away. Re-scanning it would produce an empty session and quietly
-    // erase what is on screen, so the view is left alone and the footer says
-    // what happened instead.
+
     if (m_current.id.isEmpty())
         return;
 
@@ -791,17 +720,12 @@ void MainWindow::onFolderChanged()
         return;
     }
 
-    // Guard against a re-entrant scan: rebuilding the view touches widgets, and
-    // a change raised while that happens must not start another scan.
     if (m_applyingLive)
         return;
     m_applyingLive = true;
 
     Session updated = SessionStore::capture(m_current.rootPath);
 
-    // Keep the identity of the snapshot being viewed. A fresh capture makes a
-    // new id and timestamp, but this is the same session following its folder,
-    // not a new one, so its handle and captured time must not silently change.
     updated.id = m_current.id;
     updated.name = m_current.name;
     updated.capturedAt = m_current.capturedAt;
@@ -814,13 +738,8 @@ void MainWindow::onFolderChanged()
                  updated.summary(),
                  updated.capturedAt.toString(QStringLiteral("MMM d, yyyy  HH:mm"))));
 
-    // A change elsewhere in the folder must not clear the inspector under the
-    // user, so the selection is remembered and restored. setSession() has to run
-    // before setEntry(), because it drops back to the summary panel and would
-    // otherwise erase the entry chosen just above it.
     const QString keep = m_layout->selectedPath();
-    // resetView=false: this is the same folder being refreshed, not a session
-    // being opened, so the user's zoom and pan must survive.
+
     m_layout->setSession(updated, false);
     m_inspector->setSession(updated);
 
@@ -850,8 +769,6 @@ void MainWindow::updateLiveState()
         return;
     }
 
-    // The layout no longer matches what was saved, which is worth saying: the
-    // map is live, but the .session file is still the old capture.
     m_status->setState(m_current.livePositions ? QStringLiteral("live layout")
                                                : QStringLiteral("grid layout"),
                        m_current.livePositions);
@@ -863,9 +780,6 @@ void MainWindow::rebuildKindFilter()
     if (!m_kindRow)
         return;
 
-    // Clear first, before any early return below: a previous run left chips and
-    // a trailing stretch in this row, and returning without removing them would
-    // carry that stale layout into the next session.
     while (QLayoutItem *item = m_kindRow->takeAt(0)) {
         if (QWidget *w = item->widget()) {
             w->hide();
@@ -877,7 +791,6 @@ void MainWindow::rebuildKindFilter()
 
     m_kindEnabled.clear();
 
-    // Same order the inspector uses, so the two panels agree.
     static const Kind kOrder[] = {Kind::Folder,   Kind::Archive, Kind::Executable,
                                   Kind::Document, Kind::Image,   Kind::Code,
                                   Kind::Audio,    Kind::Video,   Kind::Shortcut,
@@ -888,8 +801,6 @@ void MainWindow::rebuildKindFilter()
             present.append(kind);
     }
 
-    // With fewer than two kinds there is nothing worth filtering, so the row
-    // stays hidden rather than offering a single useless chip.
     if (present.size() < 2) {
         m_kindBar->setVisible(false);
         m_layout->setKindFilter(QHash<int, bool>());
@@ -898,11 +809,10 @@ void MainWindow::rebuildKindFilter()
     m_kindBar->setVisible(true);
 
     auto addChip = [this](Kind kind) {
-        // The name and the count are separate runs inside the chip, so the
-        // count can read as secondary and the padding stays symmetric.
+
         auto *chip = new FilterChip(kindName(kind), m_current.countOf(kind), m_kindBar);
         m_kindRow->addWidget(chip);
-        // Only switched-off kinds are recorded; an absent kind counts as on.
+
         connect(chip, &FilterChip::toggled, this, [this, kind](bool on) {
             m_kindEnabled.insert(int(kind), on);
             applyKindFilter();
@@ -912,8 +822,6 @@ void MainWindow::rebuildKindFilter()
     for (Kind kind : present)
         addChip(kind);
 
-    // Keeps the chips packed to the left. Without it the row spreads them out
-    // across the full width, with gaps that grow as the window widens.
     m_kindRow->addStretch(1);
 
     applyKindFilter();
@@ -921,7 +829,7 @@ void MainWindow::rebuildKindFilter()
 
 void MainWindow::applyKindFilter()
 {
-    // Everything on means no filter at all, which is also the cheaper path.
+
     bool allOn = true;
     for (auto it = m_kindEnabled.constBegin(); it != m_kindEnabled.constEnd(); ++it) {
         if (!it.value()) {
@@ -940,9 +848,7 @@ void MainWindow::applyKindFilter()
 
 void MainWindow::openSessionById(const QString &id)
 {
-    // Re-opening the session already on screen is a no-op rather than a reload.
-    // A double-click in the library raises both itemClicked and itemActivated,
-    // and reloading re-read the file and rebuilt the page twice for one gesture.
+
     const bool alreadyShowing = !id.isEmpty() && id == m_current.id
         && m_pages->currentIndex() == DetailPage;
     if (alreadyShowing)
@@ -961,7 +867,6 @@ void MainWindow::openSessionById(const QString &id)
         wanted = wanted.trimmed();
     }
 
-    // Accept a path as well as a bare handle, so a file can be pasted in.
     QString path = wanted;
     if (!QFileInfo::exists(path))
         path = SessionStore::pathForId(wanted);
@@ -994,8 +899,6 @@ QString MainWindow::runSnapshotDialog(bool firstRun)
     if (id.isEmpty())
         return QString();
 
-    // The dialog offers to show the result in its own window; honour that by
-    // handing the handle it just produced to an independent viewer.
     if (dialog.openInNewWindow())
         emit sessionOpened(id);
     return id;
@@ -1010,8 +913,7 @@ bool MainWindow::geometryIsOnScreen() const
 {
     const QRect frame = frameGeometry();
     for (const QScreen *screen : QGuiApplication::screens()) {
-        // Require a decent overlap rather than any intersection: a window with
-        // one pixel on screen is as good as lost.
+
         const QRect hit = screen->availableGeometry().intersected(frame);
         if (hit.width() > 120 && hit.height() > 80)
             return true;
@@ -1027,7 +929,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 void MainWindow::keyPressEvent(QKeyEvent *event)
 {
-    // The footer advertises these, so they have to work.
+
     const bool control = event->modifiers() & Qt::ControlModifier;
     if (control && event->key() == Qt::Key_N) {
         newSnapshot();
@@ -1110,9 +1012,6 @@ void MainWindow::exportSession()
     if (target.isEmpty())
         return;
 
-    // Write through QSaveFile rather than removing the destination first. The
-    // old order destroyed whatever already sat at that path before it knew the
-    // copy would succeed, so a failed export lost both files.
     QFile source(SessionStore::pathForId(m_current.id));
     if (!source.open(QIODevice::ReadOnly)) {
         QMessageBox::warning(this, QStringLiteral("Export failed"),
@@ -1134,8 +1033,7 @@ void MainWindow::exportSession()
 
 void MainWindow::setPage(Page page)
 {
-    // The popup belongs to the library page, so leaving it must not leave the
-    // list hanging over the detail view.
+
     hideSearchSuggestions();
     m_pages->setCurrentIndex(int(page));
     m_sidebar->setActive(page == LibraryPage ? m_libraryNav : m_openNav);

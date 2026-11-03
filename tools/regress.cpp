@@ -1,5 +1,4 @@
-// Focused regression checks for the flaws fixed in this pass. Development
-// helper only; lives in tools/ and never ships.
+
 #include <QApplication>
 #include <QDir>
 #include <QFile>
@@ -34,7 +33,7 @@ static Entry makeEntry(const QString &name, const QPoint &cell, bool fromShell)
     e.suffix = QStringLiteral("txt");
     e.cell = cell;
     e.fromShell = fromShell;
-    // Deliberately vague on purpose: fromShell entries carry a pixel position.
+
     e.pos = cell;
     return e;
 }
@@ -47,8 +46,7 @@ int main(int argc, char *argv[])
 
     out << "== colliding cells do not hide tiles ==\n";
     {
-        // Two icons whose pixel positions round into the same 75x98 cell, which
-        // is what happens on a desktop with "align icons to grid" switched off.
+
         Session s;
         s.id = QStringLiteral("collide");
         s.name = QStringLiteral("Collide");
@@ -75,7 +73,6 @@ int main(int argc, char *argv[])
               QStringLiteral("colliding entries render in distinct places (got %1)")
                   .arg(distinct.size()));
 
-        // They must not merely differ by a rounding pixel: check no overlap.
         bool overlaps = false;
         const QList<QRectF> list = rects.values();
         for (int i = 0; i < list.size(); ++i)
@@ -101,7 +98,7 @@ int main(int argc, char *argv[])
         view.setSearch(QStringLiteral("zzz-no-such-item"));
         check(view.visiblePaths().isEmpty(),
               QStringLiteral("search filters everything out"));
-        // Rendering must not crash and must produce a non-empty canvas.
+
         QPixmap pix(view.size());
         pix.fill(Qt::transparent);
         view.render(&pix);
@@ -127,11 +124,9 @@ int main(int argc, char *argv[])
         const Session back = SessionStore::load(path, &loaded);
         check(loaded && back.id == s.id, QStringLiteral("saved file reloads"));
 
-        // A failed write must not damage the existing file. Simulate by pointing
-        // the save at an unwritable id; the original must survive untouched.
         const qint64 before = QFileInfo(path).size();
         Session broken = s;
-        broken.id = QStringLiteral("nul");   // reserved device name
+        broken.id = QStringLiteral("nul");
         QString brokenError;
         SessionStore::save(broken, &brokenError);
         check(QFileInfo(path).size() == before,
@@ -164,7 +159,6 @@ int main(int argc, char *argv[])
         pre.write("keep me");
         pre.close();
 
-        // Reading a session that does not exist must not touch the destination.
         QFile missing(SessionStore::pathForId(QStringLiteral("no-such-session")));
         const bool readable = missing.open(QIODevice::ReadOnly);
         check(!readable, QStringLiteral("missing source is detected"));

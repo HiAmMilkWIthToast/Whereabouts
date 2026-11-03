@@ -37,18 +37,16 @@ void clearLayout(QLayout *layout)
             delete widget;
             delete item;
         } else if (QLayout *child = item->layout()) {
-            // QLayout *is* a QLayoutItem, so `child` and `item` are the same
-            // object: clearing it disposes of the item too. Deleting both would
-            // free it twice.
+
             clearLayout(child);
             delete child;
         } else {
-            delete item;   // spacer
+            delete item;
         }
     }
 }
 
-} // namespace
+}
 
 Inspector::Inspector(QWidget *parent)
     : QWidget(parent)
@@ -117,9 +115,7 @@ QLabel *Inspector::addRow(QVBoxLayout *layout, const QString &key, const QString
 
 void Inspector::clearBody()
 {
-    // Synchronous, not deleteLater(): a rebuild can run twice in one event loop
-    // turn (session, then selection) and queued deletions would still be
-    // parented to the host being refilled.
+
     clearLayout(m_body);
 }
 
@@ -147,8 +143,6 @@ void Inspector::setEntry(const Entry *entry)
         return;
     }
 
-    // Copy the entry first: `entry` may point into a session the caller is
-    // about to destroy, and the widgets built below outlive this call.
     m_entry = *entry;
     m_hasEntry = true;
 
@@ -166,7 +160,6 @@ void Inspector::buildSummary(const Session &session)
         return;
     }
 
-    // Kind breakdown: counts only, which is what makes a snapshot scannable.
     QList<Kind> present;
     const Kind order[] = {Kind::Folder, Kind::Archive, Kind::Executable, Kind::Document,
                           Kind::Image, Kind::Code, Kind::Audio, Kind::Video,

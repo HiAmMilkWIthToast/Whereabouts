@@ -4,30 +4,25 @@ namespace Icons {
 
 namespace {
 
-// Common wrapper for stroked glyphs. Kept as a macro-ish helper so adding a
-// glyph stays a single readable line.
 #define STROKE(body) \
     "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" " \
     "stroke=\"#000\" stroke-width=\"1.8\" stroke-linecap=\"round\" " \
     "stroke-linejoin=\"round\">" body "</svg>"
 
-} // namespace
+}
 
 const char *svgFor(Id id)
 {
     switch (id) {
     case Id::Cairn:
-        // Stacked stones: the app's mark, and what the name refers to.
+
         return STROKE("<ellipse cx=\"12\" cy=\"18.5\" rx=\"7\" ry=\"2.6\"/>"
                       "<path d=\"M6.4 15.1h11.2\"/>"
                       "<path d=\"M7.9 12.1h8.2\"/>"
                       "<path d=\"M9.4 9.1h5.2\"/>"
                       "<ellipse cx=\"12\" cy=\"6.6\" rx=\"2.4\" ry=\"1.6\"/>");
     case Id::CairnCompact:
-        // The same stones with fewer of them and more air between the ones that
-        // are left. At 16px the full mark's 3px gaps fall inside a single pixel
-        // and the stones merge into one blob; three stones with wider spacing
-        // still read as a stack.
+
         return STROKE("<ellipse cx=\"12\" cy=\"18.6\" rx=\"7\" ry=\"2.8\"/>"
                       "<path d=\"M7 13.4h10\"/>"
                       "<path d=\"M9.2 8.2h5.6\"/>");
@@ -75,22 +70,20 @@ const char *svgFor(Id id)
         return STROKE("<rect x=\"4\" y=\"8\" width=\"12\" height=\"12\" rx=\"1.5\"/>"
                       "<path d=\"M8 8V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-3\"/>");
     case Id::List:
-        // Three rules with their bullets, which reads as rows at 12px where a
-        // grid of squares would turn to mush.
+
         return STROKE("<path d=\"M8.5 6h12\"/><path d=\"M8.5 12h12\"/>"
                       "<path d=\"M8.5 18h12\"/><path d=\"M3.5 6h.01\"/>"
                       "<path d=\"M3.5 12h.01\"/><path d=\"M3.5 18h.01\"/>");
     case Id::Home:
-        // The stack again, reduced to a single stone: leaving a session returns
-        // to the pile you came from.
+
         return STROKE("<path d=\"m3 10.5 9-7 9 7\"/>"
                       "<path d=\"M5.5 8.8V19a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V8.8\"/>");
     case Id::Export:
-        // A tray with an arrow leaving it: the snapshot goes out of the app.
+
         return STROKE("<path d=\"M21 15v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3\"/>"
                       "<path d=\"m8 8 4-4 4 4\"/><path d=\"M12 4v11\"/>");
     case Id::SortAsc:
-        // Three strokes growing upward, with the direction drawn beneath them.
+
         return STROKE("<path d=\"M7 20V9\"/><path d=\"m4 12 3-3 3 3\"/>"
                       "<path d=\"M14 11h3\"/><path d=\"M14 15h5\"/>"
                       "<path d=\"M14 19h7\"/>");
@@ -128,4 +121,4 @@ QPixmap render(Id id, int logicalSize, const QColor &color, qreal dpr)
     return tint(alphaMask(id, logicalSize, dpr), color);
 }
 
-} // namespace Icons
+}

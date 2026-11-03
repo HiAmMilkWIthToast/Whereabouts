@@ -1,5 +1,4 @@
-// Verifies that a change in icon positions is detected, without needing to drag
-// anything on the real desktop. Development helper only.
+
 #include <QCoreApplication>
 #include <QDir>
 #include <QEventLoop>
@@ -35,7 +34,6 @@ int main(int argc, char *argv[])
 
     const QString desktop = SessionStore::desktopPath();
 
-    // ---------------------------------------------------- polling is desktop-only
     {
         out << "== polling only runs where positions are live ==\n";
 
@@ -45,8 +43,6 @@ int main(int argc, char *argv[])
         check(watcher.isPollingPositions(),
               QStringLiteral("icon positions are polled on the desktop"));
 
-        // A non-desktop folder has computed positions, so a drag is impossible
-        // there and polling must stay off.
         const QString temp = QDir::tempPath();
         watcher.watch(temp);
         check(!watcher.isPollingPositions(),
@@ -58,7 +54,6 @@ int main(int argc, char *argv[])
               QStringLiteral("polling resumes when the desktop is watched again"));
     }
 
-    // ------------------------------------------- the baseline read is non-zero
     {
         out << "\n== the shell really reports positions ==\n";
         DesktopPositions::Geometry geometry;
@@ -72,15 +67,12 @@ int main(int argc, char *argv[])
               QStringLiteral("at least one icon position was read (%1)")
                   .arg(positions.size()));
 
-        // Reading twice with nothing changed must give identical results, or the
-        // poll would report a change on every tick and re-scan constantly.
         const QHash<QString, QPoint> again =
             DesktopPositions::read(nullptr, &geometry);
         check(again == positions,
               QStringLiteral("two consecutive reads are identical (stable baseline)"));
     }
 
-    // -------------------------------------- a real poll tick does not false-fire
     {
         out << "\n== an idle desktop does not report changes ==\n";
         FolderWatcher watcher;
@@ -89,7 +81,6 @@ int main(int argc, char *argv[])
                          [&] { ++reports; });
         watcher.watch(desktop);
 
-        // Several poll intervals with nothing happening.
         pump(2600);
         check(reports == 0,
               QStringLiteral("no change reported while nothing moves (%1)").arg(reports));

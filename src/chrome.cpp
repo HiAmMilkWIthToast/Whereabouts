@@ -17,7 +17,6 @@
 #include <QVariantAnimation>
 #include <QWindow>
 
-
 #ifdef Q_OS_WIN
 #include <dwmapi.h>
 #include <windows.h>
@@ -26,13 +25,8 @@
 
 namespace {
 
-// Width of the invisible grab band along each window edge. The frame rounds its
-// corners at 9px, so the band reaches slightly inward to keep the curve
-// grabbable.
 constexpr int kResizeBorder = 8;
 
-// Where the mark and the name lead. One constant so the window title and the
-// click target cannot disagree.
 constexpr char kProjectUrl[] = "https://github.com/HiAmMilkWIthToast/Whereabouts";
 
 void applyDarkCaption(QWidget *widget)
@@ -42,8 +36,7 @@ void applyDarkCaption(QWidget *widget)
         return;
     const HWND hwnd = reinterpret_cast<HWND>(widget->windowHandle()->winId());
     const BOOL dark = TRUE;
-    // 20 is the documented attribute; 19 was the preview value early Windows 10
-    // builds used, so it is tried as a fallback.
+
     if (FAILED(DwmSetWindowAttribute(hwnd, 20, &dark, sizeof(dark))))
         DwmSetWindowAttribute(hwnd, 19, &dark, sizeof(dark));
 #else
@@ -51,9 +44,7 @@ void applyDarkCaption(QWidget *widget)
 #endif
 }
 
-} // namespace
-
-// ---------------------------------------------------------------- IconButton
+}
 
 IconButton::IconButton(Icons::Id id, int logicalSize, QWidget *parent)
     : QWidget(parent), m_id(id), m_size(logicalSize)
@@ -133,9 +124,7 @@ void IconButton::mousePressEvent(QMouseEvent *event)
     if (event->button() == Qt::LeftButton) {
         m_pressed = true;
         update();
-        // Accept, do not propagate. The title bar starts a native window-move
-        // loop on press, so letting the event through made every window button
-        // also begin a drag.
+
         event->accept();
         return;
     }
@@ -195,7 +184,6 @@ void IconButton::paintEvent(QPaintEvent *)
         p.drawPixmap(target, Icons::tint(m_mask, glyph), QRectF(m_mask.rect()));
     }
 
-    // A short accent bar marks the active page, matching the rail's linear motif.
     if (m_checked && m_active > 0.0) {
         QColor bar = Theme::accent();
         bar.setAlphaF(m_active);
@@ -205,13 +193,6 @@ void IconButton::paintEvent(QPaintEvent *)
     }
 }
 
-// --------------------------------------------------------------- BrandButton
-
-// The mark and the name, as one clickable target for the project page.
-//
-// It is painted rather than styled because the hover state is animated: the
-// background fades in and the glyph lifts a pixel, which needs a value to
-// interpolate between. QSS cannot animate.
 class TitleBar::BrandButton : public QWidget
 {
 public:
@@ -292,8 +273,6 @@ protected:
         QPainter p(this);
         p.setRenderHint(QPainter::Antialiasing);
 
-        // Hover and press both read as "this is a target", so they add rather
-        // than replace; a press on a hovered button is the brightest state.
         const qreal lift = m_hover * (1.0 - m_press * 0.5);
         const QRectF pill = QRectF(rect()).adjusted(2, 4, -2, -4);
         const int alpha = int(26 * lift);
@@ -303,8 +282,6 @@ protected:
             p.drawRoundedRect(pill, 6, 6);
         }
 
-        // The mark rises a pixel on hover, which is the whole animation: enough
-        // to feel alive, not enough to look like it moved.
         const int markY = (height() - kMarkSize) / 2 - int(m_hover * 1.0);
         const QColor markColor = Theme::lerpColor(
             Theme::brand(), Theme::brand().lighter(135), qMax(m_hover, m_press));
@@ -343,8 +320,6 @@ private:
     QVariantAnimation *m_hoverAnim = nullptr;
     QVariantAnimation *m_pressAnim = nullptr;
 };
-
-// ------------------------------------------------------------------- TitleBar
 
 TitleBar::TitleBar(QWidget *parent)
     : QWidget(parent)
@@ -417,8 +392,7 @@ void TitleBar::setSubtitle(const QString &text)
 
 void TitleBar::mousePressEvent(QMouseEvent *event)
 {
-    // Only a press on the bar itself starts a move: a click that began on one of
-    // the buttons is theirs, and a native move loop would swallow it.
+
     if (event->button() == Qt::LeftButton && !childAt(event->pos())
         && window() && window()->windowHandle()) {
         window()->windowHandle()->startSystemMove();
@@ -444,8 +418,6 @@ void TitleBar::mouseDoubleClickEvent(QMouseEvent *event)
     QWidget::mouseDoubleClickEvent(event);
 }
 
-// -------------------------------------------------------------------- Sidebar
-
 Sidebar::Sidebar(QWidget *parent)
     : QWidget(parent)
 {
@@ -465,7 +437,7 @@ int Sidebar::addPage(Icons::Id icon, const QString &tooltip)
     auto *button = new IconButton(icon, 17, this);
     button->setTooltip(tooltip);
     button->setFixedSize(38, 34);
-    // Before the trailing stretch, so the rail stays top-aligned.
+
     box->insertWidget(box->count() - 1, button);
 
     const int id = m_buttons.size();
@@ -480,8 +452,6 @@ void Sidebar::setActive(int id)
         m_buttons.at(i)->setChecked(i == id);
 }
 
-// ------------------------------------------------------------------ StatusBar
-
 StatusBar::StatusBar(QWidget *parent)
     : QWidget(parent)
 {
@@ -495,8 +465,7 @@ StatusBar::StatusBar(QWidget *parent)
 
     m_state = new QLabel(this);
     m_state->setObjectName(QStringLiteral("statusAccent"));
-    // Everything in the footer is sized to its text; without this the labels
-    // share the row's extra width and the accent fill stretches across it.
+
     m_state->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
     layout->addWidget(m_state);
 
@@ -517,8 +486,6 @@ StatusBar::StatusBar(QWidget *parent)
     m_hint->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
     layout->addWidget(m_hint);
 
-    // The date and time sit at the far right, after everything else, so they
-    // read as furniture rather than as part of the loaded session.
     m_date = new QLabel(this);
     m_date->setObjectName(QStringLiteral("statusText"));
     m_date->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
@@ -527,8 +494,7 @@ StatusBar::StatusBar(QWidget *parent)
     m_clock = new QLabel(this);
     m_clock->setObjectName(QStringLiteral("statusValue"));
     m_clock->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
-    // Nunito's digits are proportional, so a clock without a fixed font jitters
-    // a pixel or two on every tick as the digits change width.
+
     layout->addWidget(m_clock);
 
     m_tick = new QTimer(this);
@@ -549,8 +515,7 @@ void StatusBar::refreshClock()
 
 void StatusBar::refreshDate()
 {
-    // Spelled out rather than numeric: the footer is roomy and this reads as a
-    // sentence next to the session counts.
+
     m_date->setText(QDate::currentDate().toString(QStringLiteral("ddd d MMM yyyy")));
 }
 
@@ -558,8 +523,7 @@ void StatusBar::setClockVisible(bool visible)
 {
     m_date->setVisible(visible);
     m_clock->setVisible(visible);
-    // No point waking a stopped timer once a second; the clock is only worth
-    // updating while it is on screen.
+
     if (visible && !m_tick->isActive())
         m_tick->start();
     else if (!visible)
@@ -582,8 +546,6 @@ void StatusBar::setSession(const QString &text) { m_session->setText(text); }
 void StatusBar::setCounts(const QString &text) { m_counts->setText(text); }
 void StatusBar::setHint(const QString &text) { m_hint->setText(text); }
 
-// --------------------------------------------------------------- ChromeWindow
-
 ChromeWindow::ChromeWindow(QWidget *parent)
     : QWidget(parent)
 {
@@ -598,8 +560,7 @@ ChromeWindow::ChromeWindow(QWidget *parent)
 
 TitleBar *ChromeWindow::createTitleBar()
 {
-    // One implementation for every window: the buttons cannot work in one
-    // window and be dead in another.
+
     if (m_titleBar)
         return m_titleBar;
 
@@ -632,8 +593,6 @@ void ChromeWindow::paintEvent(QPaintEvent *)
     const qreal radius = isMaximized() ? 0.0 : 9.0;
     p.drawRoundedRect(QRectF(rect()).adjusted(0, 0, -1, -1), radius, radius);
 
-    // A one-pixel inner border separates the shell from a light desktop behind
-    // the rounded corners.
     if (!isMaximized()) {
         p.setBrush(Qt::NoBrush);
         p.setPen(QPen(QColor(QStringLiteral("#252a31")), 1.0));
@@ -651,9 +610,6 @@ void ChromeWindow::showEvent(QShowEvent *event)
         return;
     m_frameApplied = true;
 
-    // DefWindowProc only runs its resize loop for windows with WS_THICKFRAME,
-    // which Qt omits on frameless ones. Without it the hit-test below reports
-    // the edges but dragging them does nothing.
     HWND hwnd = reinterpret_cast<HWND>(winId());
     const LONG_PTR style = GetWindowLongPtr(hwnd, GWL_STYLE);
     SetWindowLongPtr(hwnd, GWL_STYLE, style | WS_THICKFRAME);
@@ -667,7 +623,7 @@ void ChromeWindow::changeEvent(QEvent *event)
 {
     QWidget::changeEvent(event);
     if (event->type() == QEvent::WindowStateChange) {
-        // Let the shell's frame reach the screen edges when maximized.
+
         const int inset = isMaximized() ? 0 : 6;
         m_frameLayout->setContentsMargins(inset, inset, inset, inset);
         if (m_titleBar)
@@ -687,16 +643,13 @@ bool ChromeWindow::nativeEvent(const QByteArray &eventType, void *message, qintp
     Q_UNUSED(eventType);
     MSG *msg = static_cast<MSG *>(message);
 
-    // Claim the whole window as client area: the chrome is painted here, so
-    // Windows must not reserve a border of its own.
     if (msg->message == WM_NCCALCSIZE && msg->wParam != FALSE) {
         *result = 0;
         return true;
     }
 
     if (msg->message == WM_NCHITTEST && !isMaximized()) {
-        // The coordinates carried by the message are authoritative; querying the
-        // cursor instead made the edge band feel intermittent.
+
         const int x = GET_X_LPARAM(msg->lParam);
         const int y = GET_Y_LPARAM(msg->lParam);
 

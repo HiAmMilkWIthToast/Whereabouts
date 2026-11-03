@@ -8,15 +8,12 @@
 #include <QString>
 #include <QtGlobal>
 
-// Lucide-style 24px outline glyphs. They are rasterised once into an alpha mask
-// and tinted at paint time, so every glyph inherits the current theme colour and
-// cross-fades cleanly with the animated controls.
 namespace Icons {
 
 enum class Id {
-    Cairn,      // brand mark: stacked stones
-    CairnCompact, // the mark with fewer stones, for 16-24px where they merge
-    Layout,     // snapshot / frame
+    Cairn,
+    CairnCompact,
+    Layout,
     Folder,
     File,
     Archive,
@@ -29,11 +26,11 @@ enum class Id {
     Plus,
     Info,
     Grid,
-    List,       // rows: the list view, and the companion to Grid
-    Home,       // back to the session list
-    Export,     // write a snapshot out
-    SortAsc,    // A to Z
-    SortDesc,   // Z to A
+    List,
+    Home,
+    Export,
+    SortAsc,
+    SortDesc,
     Close,
     Minimize,
     Maximize,
@@ -42,7 +39,6 @@ enum class Id {
 
 const char *svgFor(Id id);
 
-// Rendered at `logicalSize` and scaled by `dpr`; tint it with tint().
 QPixmap alphaMask(Id id, int logicalSize, qreal dpr = 1.0);
 
 inline QPixmap tint(const QPixmap &mask, const QColor &color)
@@ -55,7 +51,6 @@ inline QPixmap tint(const QPixmap &mask, const QColor &color)
     return out;
 }
 
-// Convenience for one-off glyphs (labels, tooltips, empty states).
 QPixmap render(Id id, int logicalSize, const QColor &color, qreal dpr = 1.0);
 
-} // namespace Icons
+}

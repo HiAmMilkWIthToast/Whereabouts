@@ -8,10 +8,6 @@ class QLineEdit;
 class QPushButton;
 class QCheckBox;
 
-// First-run flow: pick the folder to snapshot, name the session, capture it.
-//
-// Two steps in one dialog rather than a wizard, because there is exactly one
-// decision to make: which folder, and what to call it.
 class OnboardingDialog : public QDialog
 {
     Q_OBJECT
@@ -22,7 +18,6 @@ public:
     QString chosenPath() const;
     QString sessionName() const;
 
-    // Set by the dialog when the capture should open in a separate window.
     bool openInNewWindow() const;
 
 protected:
