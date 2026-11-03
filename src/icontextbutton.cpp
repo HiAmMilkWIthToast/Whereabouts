@@ -1,6 +1,7 @@
 #include "icontextbutton.h"
 #include "theme.h"
 
+#include <QApplication>
 #include <QFontMetrics>
 #include <QPainter>
 #include <QStyleOptionButton>
@@ -71,6 +72,26 @@ QString expandTokens(QString value)
     return value;
 }
 
+// The stylesheet last installed on the application, built once.
+//
+// Keyed on the QApplication pointer so a second QApplication (the tools build
+// one per run) and a genuine restyle both rebuild, while ordinary painting does
+// not. Cached by instance rather than by a manual invalidate() call: nothing
+// would call that at the right moment, and a stale sheet would paint buttons in
+// the wrong colour with no visible symptom.
+const QString &cachedStyleSheet()
+{
+    static const QApplication *owner = nullptr;
+    static QString sheet;
+
+    const QApplication *current = qApp;
+    if (owner != current || sheet.isEmpty()) {
+        sheet = Theme::buildStyleSheet();
+        owner = current;
+    }
+    return sheet;
+}
+
 } // namespace
 
 IconTextButton::IconTextButton(Icons::Id icon, const QString &text, QWidget *parent)
@@ -112,7 +133,11 @@ QColor IconTextButton::textColor() const
         name = QStringLiteral("ghost");
 
     const QString base = QStringLiteral("#") + name;
-    const QString sheet = Theme::buildStyleSheet();
+    // Building the sheet costs a 12KB template copy plus four whole-text
+    // replacements, and this runs from paintEvent -- every repaint, hover and
+    // resize. It only changes when the application sets a new stylesheet, so it
+    // is cached against the QApplication instance that installed it.
+    const QString &sheet = cachedStyleSheet();
 
     // Most specific state first, falling back to the resting rule -- the order
     // the stylesheet itself resolves in.

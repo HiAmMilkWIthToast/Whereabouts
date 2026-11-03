@@ -138,7 +138,12 @@ int main(int argc, char *argv[])
         QKeyEvent press(QEvent::KeyPress, Qt::Key_F, Qt::ControlModifier);
         QApplication::sendEvent(viewer, &press);
         pump(150);
-        auto *focused = qobject_cast<QLineEdit *>(QApplication::focusWidget());
+        // Asked of the viewer, not of the application. The global focusWidget()
+        // is only non-null while that window holds activation, and this window
+        // is placed off-screen where the window manager may never activate it --
+        // the event still reaches the handler, so the global answer was a coin
+        // toss that failed perhaps one run in twenty.
+        auto *focused = qobject_cast<QLineEdit *>(viewer->focusWidget());
         check(focused != nullptr,
               QStringLiteral("Ctrl+F focuses a text field in the viewer"));
         viewer->close();
