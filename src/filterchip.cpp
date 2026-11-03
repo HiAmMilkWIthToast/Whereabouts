@@ -102,7 +102,10 @@ QSize FilterChip::sizeHint() const
     // not fill. That leaves a little breathing room at both ends, and because
     // the run is centred inside this width the two ends stay equal.
     const int w = kPadX * 2 + m_labelAdvance + kGap + m_countAdvance;
-    const int h = metrics.height() + 5;
+    // Matches the buttons and fields beside it in the toolbar. Derived from the
+    // font only, a chip came out several pixels shorter and the row looked
+    // ragged; the font height is still a floor so the text can never clip.
+    const int h = qMax(Metrics::kBarControlHeight, metrics.height() + 4);
     return QSize(w, h);
 }
 

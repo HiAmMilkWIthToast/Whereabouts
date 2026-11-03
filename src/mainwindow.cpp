@@ -331,10 +331,9 @@ QWidget *MainWindow::buildDetailPage()
     root->setContentsMargins(Metrics::kPagePad, 14, Metrics::kPagePad, 14);
     root->setSpacing(0);
 
-    // One height for every control in the header and toolbar. Mixed 24/27
-    // heights leave the centres agreeing while the edges disagree, which still
-    // reads as crooked.
-    const int kBar = 26;
+    // Every control on the bar is the same height, chips included: see
+    // Metrics::kBarControlHeight.
+    const int kBar = Metrics::kBarControlHeight;
 
     // ---- header
     // The title owns the top row outright. The controls used to sit on it as
@@ -372,8 +371,8 @@ QWidget *MainWindow::buildDetailPage()
     // the right. The chips sit in their own widget so rebuildKindFilter can
     // keep replacing its contents without ever touching these controls.
     auto *toolbar = new QHBoxLayout;
-    toolbar->setContentsMargins(0, 10, 0, 0);
-    toolbar->setSpacing(8);
+    toolbar->setContentsMargins(0, 8, 0, 0);
+    toolbar->setSpacing(6);
 
     auto *search = new QLineEdit(page);
     search->setObjectName(QStringLiteral("field"));
@@ -404,7 +403,7 @@ QWidget *MainWindow::buildDetailPage()
     // ---- kind filter chips, only for the kinds this session actually holds
     m_kindBar = new QWidget(page);
     m_kindRow = new QHBoxLayout(m_kindBar);
-    m_kindRow->setContentsMargins(0, 8, 0, 0);
+    m_kindRow->setContentsMargins(0, 0, 0, 0);
     // One spacing value for the whole row, so the gaps between chips are
     // uniform instead of depending on each chip's own margins.
     m_kindRow->setSpacing(6);

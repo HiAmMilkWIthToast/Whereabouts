@@ -50,4 +50,9 @@ constexpr int kSidebarWidth = 46;
 constexpr int kStatusBarHeight = 24;
 constexpr int kPagePad = 22;
 constexpr int kInspectorWidth = 238;
+// One height for every control on a horizontal bar -- chips, fields, buttons.
+// Sized separately they drifted apart (a chip came out 21px against a 26px
+// button), and two rows of controls that disagree by five pixels read as
+// misaligned even when their centres match.
+constexpr int kBarControlHeight = 24;
 } // namespace Metrics
