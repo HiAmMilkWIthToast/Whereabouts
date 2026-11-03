@@ -24,7 +24,7 @@ BEGIN
         BEGIN
             VALUE "FileDescription", "Cairn"
             VALUE "FileVersion", "1.0.0.0"
-            VALUE "LegalCopyright", "Copyright (c) 2026 HiAmMilkWIthToast. MIT Licence."
+            VALUE "LegalCopyright", "MIT Licence."
             VALUE "InternalName", "cairn"
             VALUE "OriginalFilename", "cairn.exe"
             VALUE "ProductName", "Cairn"

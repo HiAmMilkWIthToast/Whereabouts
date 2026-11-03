@@ -27,7 +27,10 @@ namespace {
 
 constexpr int kResizeBorder = 8;
 
-constexpr char kProjectUrl[] = "https://github.com/HiAmMilkWIthToast/Whereabouts";
+#ifndef CAIRN_PROJECT_URL
+#  define CAIRN_PROJECT_URL ""
+#endif
+constexpr char kProjectUrl[] = CAIRN_PROJECT_URL;
 
 void applyDarkCaption(QWidget *widget)
 {
@@ -334,7 +337,10 @@ TitleBar::TitleBar(QWidget *parent)
 
     m_brand = new BrandButton(this);
     m_brand->setObjectName(QStringLiteral("appBrand"));
-    m_brand->setToolTip(QStringLiteral("Open the project page"));
+    // With no address configured the mark opens nothing, so promising a page
+    // would be a lie the user only discovers by clicking.
+    if (kProjectUrl[0] != '\0')
+        m_brand->setToolTip(QStringLiteral("Open the project page"));
     layout->addWidget(m_brand);
 
     m_subtitle = new QLabel(this);

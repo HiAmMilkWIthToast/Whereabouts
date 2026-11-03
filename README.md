@@ -5,9 +5,9 @@ A dark, compact desktop app that records where everything sits in a folder.
 A cairn is a stack of stones that marks a place — that is all this does: it
 remembers the *arrangement* of a folder so you can look at it later.
 
-Source, issues and releases live at
-[github.com/HiAmMilkWIthToast/Whereabouts](https://github.com/HiAmMilkWIthToast/Whereabouts).
-The mark in the top-left corner of every window opens it.
+The mark in the top-left corner opens the project page. Pass it at configure
+time with `-DCAIRN_PROJECT_URL=https://example.com/your-project`; with none
+given the mark simply is not a link.
 
 ## What it is, and what it is not
 
@@ -80,7 +80,7 @@ chip to hide that kind; click it again to bring it back.
 In list mode a sort control appears: Name, Size, Modified or Kind, ascending or
 descending. Folders always sort ahead of files.
 
-See [FEATURES.md](FEATURES.md) for what each feature does and how it is tested.
+Each of these is covered by a check tool; see [Checking it](#checking-it).
 
 ## Building
 
@@ -109,6 +109,30 @@ Or with CMake directly:
 
     cmake -S . -B build -DCMAKE_PREFIX_PATH=C:/Qt/6.12.0/mingw_64
     cmake --build build
+
+The title-bar mark opens a project page only if the build is given an address:
+
+    cmake -S . -B build -DCAIRN_PROJECT_URL=https://example.com/your-project
+
+With none given the mark is a plain logo and opens nothing.
+
+## Checking it
+
+`check.bat` builds and runs every check tool. With no argument it runs all of
+them; give it a name to run one:
+
+| Command | Covers |
+| --- | --- |
+| `check.bat filter` | kind-filter chips |
+| `check.bat keys` | keyboard navigation |
+| `check.bat sort` | list sorting |
+| `check.bat geom` | window geometry persistence |
+| `check.bat suggest` | the executable icon and the brand tone |
+| `check.bat brand` | the clickable, animated mark |
+| `check.bat icons` | every icon id has artwork, and buttons retint on hover |
+
+Each check prints `PASS` or `FAIL` per assertion and exits non-zero on failure,
+so the suite is usable from a script.
 
 ## Layout of the code
 

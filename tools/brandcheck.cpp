@@ -76,10 +76,19 @@ int main(int argc, char *argv[])
         check(brand->rect().width() > 60,
               QStringLiteral("the target covers the mark and the name (%1px wide)")
                   .arg(brand->rect().width()));
-        check(brand->cursor().shape() == Qt::PointingHandCursor,
-              QStringLiteral("it shows a hand cursor"));
-        check(!brand->toolTip().isEmpty(),
-              QStringLiteral("it explains itself: \"%1\"").arg(brand->toolTip()));
+        // The hand only means something when the mark actually opens
+        // something; without a configured address it is a logo, and a hand
+        // cursor would promise a link that is not there.
+        const bool isLink = !QStringLiteral(CAIRN_PROJECT_URL).isEmpty();
+        check(brand->cursor().shape()
+                  == (isLink ? Qt::PointingHandCursor : Qt::ArrowCursor),
+              isLink ? QStringLiteral("it shows a hand cursor")
+                     : QStringLiteral("it shows no hand cursor without a link"));
+        // A tooltip exists only to describe the link, so it appears exactly
+        // when there is one.
+        check(brand->toolTip().isEmpty() == !isLink,
+              isLink ? QStringLiteral("it explains itself: \"%1\"").arg(brand->toolTip())
+                     : QStringLiteral("it stays quiet without a link"));
     }
 
     out << "\n== it is reachable and looks like a target ==\n";
@@ -138,25 +147,23 @@ int main(int argc, char *argv[])
               QStringLiteral("releasing clears the pressed look"));
     }
 
-    out << "\n== the address is the project, spelled out ==\n";
+    out << "\n== the address matches the one the build was given ==\n";
     {
-
-        const QString expected = QStringLiteral("https://github.com/HiAmMilkWIthToast/Whereabouts");
-        const QUrl url(expected);
-        check(url.isValid() && url.scheme() == QLatin1String("https"),
-              QStringLiteral("the address parses as an https URL"));
-        check(url.host() == QLatin1String("github.com"),
-              QStringLiteral("it points at github.com"));
-        check(url.path().endsWith(QLatin1String("/Whereabouts")),
-              QStringLiteral("and at this repository (%1)").arg(url.path()));
-
-        QFile src(QStringLiteral(CAIRN_SRC_DIR "/chrome.cpp"));
-        if (src.open(QIODevice::ReadOnly)) {
-            const QString text = QString::fromUtf8(src.readAll());
-            check(text.contains(expected),
-                  QStringLiteral("chrome.cpp carries exactly that address"));
+        const QString expected = QStringLiteral(CAIRN_PROJECT_URL);
+        if (expected.isEmpty()) {
+            out << "  (no project address configured)\n";
         } else {
-            check(false, QStringLiteral("could read chrome.cpp"));
+            const QUrl url(expected);
+            check(url.isValid() && !url.scheme().isEmpty(),
+                  QStringLiteral("the address parses as a URL"));
+
+            QFile src(QStringLiteral(CAIRN_SRC_DIR "/chrome.cpp"));
+            if (src.open(QIODevice::ReadOnly)) {
+                check(src.readAll().contains("CAIRN_PROJECT_URL"),
+                      QStringLiteral("chrome.cpp takes the address from the build"));
+            } else {
+                check(false, QStringLiteral("could read chrome.cpp"));
+            }
         }
     }
 

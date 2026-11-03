@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
 project(Cairn VERSION 1.0 LANGUAGES CXX)
 
+# The address the mark opens. Deliberately unset by default: the build should
+# not name an account, and an unset address makes the mark an inert logo rather
+# than a link to somewhere arbitrary.
+set(CAIRN_PROJECT_URL "" CACHE STRING "Address the title-bar mark opens")
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
@@ -47,6 +52,9 @@ set(CAIRN_SOURCES
 
 add_library(cairn_core STATIC ${CAIRN_SOURCES})
 target_include_directories(cairn_core PUBLIC src)
+# PUBLIC so the tools that link the core see the same address the app does.
+target_compile_definitions(cairn_core PUBLIC
+    CAIRN_PROJECT_URL="${CAIRN_PROJECT_URL}")
 
 # COM (real desktop icon positions), DWM (dark caption bars) and the shell APIs
 # for resolving shortcuts. Public, so every tool that links the core inherits it.
