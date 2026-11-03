@@ -331,25 +331,30 @@ QWidget *MainWindow::buildDetailPage()
     root->setContentsMargins(Metrics::kPagePad, 14, Metrics::kPagePad, 14);
     root->setSpacing(0);
 
+    // One height for every control in the header and toolbar. Mixed 24/27
+    // heights leave the centres agreeing while the edges disagree, which still
+    // reads as crooked.
+    const int kBar = 26;
+
     // ---- header
-    // The back button belongs on the title's line, not level with the whole
-    // title-and-subtitle block: centred on that block it sat 8px below the
-    // "Desktop" baseline and read as misaligned. One grid holds the entire
-    // row, so the button, the title and the controls all share a line.
+    // The title owns the top row outright. The controls used to sit on it as
+    // well, which left a long dead gap between the title and the right edge --
+    // the page read as a table with two empty columns. They now share the
+    // filter row, where the eye already is when it starts narrowing the view.
     auto *headGrid = new QGridLayout(page);
     headGrid->setContentsMargins(0, 0, 0, 0);
     headGrid->setHorizontalSpacing(10);
     headGrid->setVerticalSpacing(1);
-    // The title column takes the slack, so the controls stay hard right.
+    // Without this a QGridLayout shares the spare width out evenly between the
+    // columns, which parks the title in the middle of the page. The title
+    // column takes all of it, so the title sits right after the button.
+    headGrid->setColumnStretch(0, 0);
     headGrid->setColumnStretch(1, 1);
 
     auto *back = new IconTextButton(Icons::Id::Home,
                                     QStringLiteral("Sessions"), page);
     back->setObjectName(QStringLiteral("backLink"));
     back->setToolTip(QStringLiteral("Back to every snapshot (Esc)"));
-    // One height for every control in the row. Mixed 24/27 heights leave the
-    // centres agreeing while the edges disagree, which still reads as crooked.
-    const int kBar = 26;
     back->setFixedHeight(kBar);
     headGrid->addWidget(back, 0, 0, Qt::AlignLeft | Qt::AlignVCenter);
 
@@ -357,39 +362,44 @@ QWidget *MainWindow::buildDetailPage()
     m_detailTitle->setObjectName(QStringLiteral("pageTitle"));
     headGrid->addWidget(m_detailTitle, 0, 1, Qt::AlignLeft | Qt::AlignVCenter);
 
+    m_detailMeta = new QLabel(page);
+    m_detailMeta->setObjectName(QStringLiteral("pageSubtitle"));
+    headGrid->addWidget(m_detailMeta, 1, 1, Qt::AlignLeft | Qt::AlignVCenter);
+
+    root->addLayout(headGrid);
+
+    // ---- toolbar: what the snapshot holds on the left, how to look at it on
+    // the right. The chips sit in their own widget so rebuildKindFilter can
+    // keep replacing its contents without ever touching these controls.
+    auto *toolbar = new QHBoxLayout;
+    toolbar->setContentsMargins(0, 10, 0, 0);
+    toolbar->setSpacing(8);
+
     auto *search = new QLineEdit(page);
     search->setObjectName(QStringLiteral("field"));
     search->setPlaceholderText(QStringLiteral("Find an item"));
-    search->setFixedWidth(180);
+    search->setFixedWidth(200);
     search->setFixedHeight(kBar);
     search->setClearButtonEnabled(true);
-    headGrid->addWidget(search, 0, 2, Qt::AlignRight | Qt::AlignVCenter);
+    toolbar->addWidget(search, 0, Qt::AlignVCenter);
     m_find = search;
 
     m_viewToggle = new IconTextButton(Icons::Id::List,
                                       QStringLiteral("List"), page);
     m_viewToggle->setObjectName(QStringLiteral("secondary"));
     m_viewToggle->setFixedWidth(76);
-    m_viewToggle->setCheckable(true);
     m_viewToggle->setFixedHeight(kBar);
+    m_viewToggle->setCheckable(true);
     m_viewToggle->setToolTip(QStringLiteral("Switch between the map and a sorted list"));
-    headGrid->addWidget(m_viewToggle, 0, 3, Qt::AlignRight | Qt::AlignVCenter);
+    toolbar->addWidget(m_viewToggle, 0, Qt::AlignVCenter);
 
     auto *exportButton = new IconTextButton(Icons::Id::Export,
                                             QStringLiteral("Export"), page);
     exportButton->setObjectName(QStringLiteral("secondary"));
+    exportButton->setFixedHeight(kBar);
     exportButton->setToolTip(
         QStringLiteral("Write this snapshot out as a .session file"));
-    exportButton->setFixedHeight(kBar);
-    headGrid->addWidget(exportButton, 0, 4, Qt::AlignRight | Qt::AlignVCenter);
-
-    // The subtitle spans only the title column, so the right-hand controls
-    // stay on the title's row instead of being pulled down by the second line.
-    m_detailMeta = new QLabel(page);
-    m_detailMeta->setObjectName(QStringLiteral("pageSubtitle"));
-    headGrid->addWidget(m_detailMeta, 1, 1, Qt::AlignLeft | Qt::AlignVCenter);
-
-    root->addLayout(headGrid);
+    toolbar->addWidget(exportButton, 0, Qt::AlignVCenter);
 
     // ---- kind filter chips, only for the kinds this session actually holds
     m_kindBar = new QWidget(page);
@@ -398,7 +408,8 @@ QWidget *MainWindow::buildDetailPage()
     // One spacing value for the whole row, so the gaps between chips are
     // uniform instead of depending on each chip's own margins.
     m_kindRow->setSpacing(6);
-    root->addWidget(m_kindBar);
+    toolbar->insertWidget(0, m_kindBar, 1);
+    root->addLayout(toolbar);
 
     // ---- sort control, only relevant to the list
     m_sortBar = new QWidget(page);
