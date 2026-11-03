@@ -335,19 +335,19 @@ QPushButton#ghost:disabled {
    controls share and should stay neutral. */
 QPushButton#backLink {
     background: transparent;
-    border: 1px solid #3a3226;
+    border: 1px solid transparent;
     border-radius: 6px;
     color: #d0a86a;
     font-size: 11px;
-    padding: 4px 10px;
+    padding: 5px 10px;
 }
 QPushButton#backLink:hover {
     background: #221d16;
-    border-color: #d0a86a;
+    border-color: #3a3226;
     color: #e8c48d;
 }
 QPushButton#backLink:pressed {
-    background: #1a1611;
+    background: #16181d;
 }
 QPushButton#secondary {
     background: #171a1f;

@@ -339,7 +339,7 @@ QWidget *MainWindow::buildDetailPage()
     auto *headGrid = new QGridLayout(page);
     headGrid->setContentsMargins(0, 0, 0, 0);
     headGrid->setHorizontalSpacing(10);
-    headGrid->setVerticalSpacing(2);
+    headGrid->setVerticalSpacing(1);
     // The title column takes the slack, so the controls stay hard right.
     headGrid->setColumnStretch(1, 1);
 
@@ -347,7 +347,10 @@ QWidget *MainWindow::buildDetailPage()
                                     QStringLiteral("Sessions"), page);
     back->setObjectName(QStringLiteral("backLink"));
     back->setToolTip(QStringLiteral("Back to every snapshot (Esc)"));
-    back->setFixedHeight(24);
+    // One height for every control in the row. Mixed 24/27 heights leave the
+    // centres agreeing while the edges disagree, which still reads as crooked.
+    const int kBar = 26;
+    back->setFixedHeight(kBar);
     headGrid->addWidget(back, 0, 0, Qt::AlignLeft | Qt::AlignVCenter);
 
     m_detailTitle = new QLabel(page);
@@ -358,6 +361,7 @@ QWidget *MainWindow::buildDetailPage()
     search->setObjectName(QStringLiteral("field"));
     search->setPlaceholderText(QStringLiteral("Find an item"));
     search->setFixedWidth(180);
+    search->setFixedHeight(kBar);
     search->setClearButtonEnabled(true);
     headGrid->addWidget(search, 0, 2, Qt::AlignRight | Qt::AlignVCenter);
     m_find = search;
@@ -367,6 +371,7 @@ QWidget *MainWindow::buildDetailPage()
     m_viewToggle->setObjectName(QStringLiteral("secondary"));
     m_viewToggle->setFixedWidth(76);
     m_viewToggle->setCheckable(true);
+    m_viewToggle->setFixedHeight(kBar);
     m_viewToggle->setToolTip(QStringLiteral("Switch between the map and a sorted list"));
     headGrid->addWidget(m_viewToggle, 0, 3, Qt::AlignRight | Qt::AlignVCenter);
 
@@ -375,6 +380,7 @@ QWidget *MainWindow::buildDetailPage()
     exportButton->setObjectName(QStringLiteral("secondary"));
     exportButton->setToolTip(
         QStringLiteral("Write this snapshot out as a .session file"));
+    exportButton->setFixedHeight(kBar);
     headGrid->addWidget(exportButton, 0, 4, Qt::AlignRight | Qt::AlignVCenter);
 
     // The subtitle spans only the title column, so the right-hand controls
