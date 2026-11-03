@@ -13,6 +13,10 @@
 #include <oleauto.h>
 #endif
 
+namespace DesktopPositions {
+QString resolveShortcut(const QString &path);
+}
+
 namespace {
 
 #ifdef Q_OS_WIN
@@ -116,13 +120,17 @@ bool readDesktopView(QHash<QString, QPoint> &positions,
                 positions.insert(name, QPoint(point.x, point.y));
 
             if (name.endsWith(QLatin1String(".lnk"), Qt::CaseInsensitive)) {
-                LPWSTR target = nullptr;
+                LPWSTR full = nullptr;
                 if (SUCCEEDED(folder->GetDisplayNameOf(item, SHGDN_FORPARSING, &strret))
-                    && SUCCEEDED(StrRetToStrW(&strret, item, &target))) {
-                    const QString full = QString::fromWCharArray(target);
-                    if (!full.isEmpty())
-                        targets.insert(name, full);
-                    CoTaskMemFree(target);
+                    && SUCCEEDED(StrRetToStrW(&strret, item, &full))) {
+                    const QString shortcutPath = QString::fromWCharArray(full);
+                    CoTaskMemFree(full);
+
+                    // SHGDN_FORPARSING returns the .lnk itself; the target has
+                    // to be read out of the link.
+                    const QString target = DesktopPositions::resolveShortcut(shortcutPath);
+                    if (!target.isEmpty())
+                        targets.insert(name, target);
                 }
             }
         }
@@ -159,6 +167,12 @@ Geometry fallbackGeometry()
 QString resolveShortcut(const QString &path)
 {
 #ifdef Q_OS_WIN
+    // This asks for a COM object and is called from paths that never touched
+    // COM: a folder that is not the desktop, and the toolbar. Without an
+    // apartment the creation fails and the function silently returns nothing,
+    // so the target of every shortcut in the list was blank.
+    ApartmentScope apartment;
+
     IShellLinkW *link = nullptr;
     if (FAILED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER,
                                 IID_IShellLinkW, reinterpret_cast<void **>(&link))))
