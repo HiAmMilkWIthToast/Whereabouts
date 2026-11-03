@@ -336,51 +336,48 @@ QWidget *MainWindow::buildDetailPage()
     const int kBar = Metrics::kBarControlHeight;
 
     // ---- header
-    // The title owns the top row outright. The controls used to sit on it as
-    // well, which left a long dead gap between the title and the right edge --
-    // the page read as a table with two empty columns. They now share the
-    // filter row, where the eye already is when it starts narrowing the view.
+    // The title anchors the left of the top row and every control gathers on
+    // the right: the way back, then the field that narrows the view, then the
+    // two things that act on it. Borrowing the icons' reading order -- go back,
+    // find, change how you see it, take it away -- keeps the row legible
+    // without labels.
+    //
+    // They share the title's row rather than the filter row, so the whole bar
+    // sits level with "Desktop" instead of floating below it.
     auto *headGrid = new QGridLayout(page);
     headGrid->setContentsMargins(0, 0, 0, 0);
-    headGrid->setHorizontalSpacing(10);
+    headGrid->setHorizontalSpacing(12);
     headGrid->setVerticalSpacing(1);
-    // Without this a QGridLayout shares the spare width out evenly between the
-    // columns, which parks the title in the middle of the page. The title
-    // column takes all of it, so the title sits right after the button.
-    headGrid->setColumnStretch(0, 0);
-    headGrid->setColumnStretch(1, 1);
+    // Without a stretch a QGridLayout shares spare width evenly between the
+    // columns and parks the title in the middle of the page.
+    headGrid->setColumnStretch(0, 1);
+
+    m_detailTitle = new QLabel(page);
+    m_detailTitle->setObjectName(QStringLiteral("pageTitle"));
+    headGrid->addWidget(m_detailTitle, 0, 0, Qt::AlignLeft | Qt::AlignVCenter);
+
+    m_detailMeta = new QLabel(page);
+    m_detailMeta->setObjectName(QStringLiteral("pageSubtitle"));
+    headGrid->addWidget(m_detailMeta, 1, 0, Qt::AlignLeft | Qt::AlignVCenter);
+
+    auto *actions = new QHBoxLayout;
+    actions->setContentsMargins(0, 0, 0, 0);
+    actions->setSpacing(6);
 
     auto *back = new IconTextButton(Icons::Id::Home,
                                     QStringLiteral("Sessions"), page);
     back->setObjectName(QStringLiteral("backLink"));
     back->setToolTip(QStringLiteral("Back to every snapshot (Esc)"));
     back->setFixedHeight(kBar);
-    headGrid->addWidget(back, 0, 0, Qt::AlignLeft | Qt::AlignVCenter);
-
-    m_detailTitle = new QLabel(page);
-    m_detailTitle->setObjectName(QStringLiteral("pageTitle"));
-    headGrid->addWidget(m_detailTitle, 0, 1, Qt::AlignLeft | Qt::AlignVCenter);
-
-    m_detailMeta = new QLabel(page);
-    m_detailMeta->setObjectName(QStringLiteral("pageSubtitle"));
-    headGrid->addWidget(m_detailMeta, 1, 1, Qt::AlignLeft | Qt::AlignVCenter);
-
-    root->addLayout(headGrid);
-
-    // ---- toolbar: what the snapshot holds on the left, how to look at it on
-    // the right. The chips sit in their own widget so rebuildKindFilter can
-    // keep replacing its contents without ever touching these controls.
-    auto *toolbar = new QHBoxLayout;
-    toolbar->setContentsMargins(0, 8, 0, 0);
-    toolbar->setSpacing(6);
+    actions->addWidget(back, 0, Qt::AlignVCenter);
 
     auto *search = new QLineEdit(page);
     search->setObjectName(QStringLiteral("field"));
     search->setPlaceholderText(QStringLiteral("Find an item"));
-    search->setFixedWidth(200);
+    search->setFixedWidth(190);
     search->setFixedHeight(kBar);
     search->setClearButtonEnabled(true);
-    toolbar->addWidget(search, 0, Qt::AlignVCenter);
+    actions->addWidget(search, 0, Qt::AlignVCenter);
     m_find = search;
 
     m_viewToggle = new IconTextButton(Icons::Id::List,
@@ -390,7 +387,7 @@ QWidget *MainWindow::buildDetailPage()
     m_viewToggle->setFixedHeight(kBar);
     m_viewToggle->setCheckable(true);
     m_viewToggle->setToolTip(QStringLiteral("Switch between the map and a sorted list"));
-    toolbar->addWidget(m_viewToggle, 0, Qt::AlignVCenter);
+    actions->addWidget(m_viewToggle, 0, Qt::AlignVCenter);
 
     auto *exportButton = new IconTextButton(Icons::Id::Export,
                                             QStringLiteral("Export"), page);
@@ -398,17 +395,22 @@ QWidget *MainWindow::buildDetailPage()
     exportButton->setFixedHeight(kBar);
     exportButton->setToolTip(
         QStringLiteral("Write this snapshot out as a .session file"));
-    toolbar->addWidget(exportButton, 0, Qt::AlignVCenter);
+    actions->addWidget(exportButton, 0, Qt::AlignVCenter);
 
-    // ---- kind filter chips, only for the kinds this session actually holds
+    headGrid->addLayout(actions, 0, 1, Qt::AlignRight | Qt::AlignVCenter);
+
+    root->addLayout(headGrid);
+
+    // ---- kind filter chips, only for the kinds this session actually holds.
+    // They keep their own widget: rebuildKindFilter replaces its contents on
+    // every session, and anything sharing the layout would be deleted with it.
     m_kindBar = new QWidget(page);
     m_kindRow = new QHBoxLayout(m_kindBar);
-    m_kindRow->setContentsMargins(0, 0, 0, 0);
+    m_kindRow->setContentsMargins(0, 8, 0, 0);
     // One spacing value for the whole row, so the gaps between chips are
     // uniform instead of depending on each chip's own margins.
     m_kindRow->setSpacing(6);
-    toolbar->insertWidget(0, m_kindBar, 1);
-    root->addLayout(toolbar);
+    root->addWidget(m_kindBar);
 
     // ---- sort control, only relevant to the list
     m_sortBar = new QWidget(page);
