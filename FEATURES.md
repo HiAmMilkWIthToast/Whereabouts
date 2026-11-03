@@ -186,5 +186,6 @@ Each feature added its own check tool, all wired into `check.bat`:
 | `check.bat geom` | window geometry persistence |
 | `check.bat suggest` | the executable icon and the brand tone |
 | `check.bat brand` | the clickable, animated mark |
+| `check.bat icons` | every icon id has artwork, and buttons retint on hover |
 
 Running `check.bat` with no argument runs everything.

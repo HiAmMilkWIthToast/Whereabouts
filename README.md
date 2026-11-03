@@ -116,6 +116,8 @@ Or with CMake directly:
 | --- | --- |
 | `src/theme.*` | colours, metrics, the single stylesheet |
 | `src/icons.*` | inline SVG icons, rasterised and tinted at paint time |
+| `src/icontextbutton.*` | a button that paints its own glyph and label |
+| `src/filterchip.*` | the kind-filter pill, also self-painted |
 | `src/chrome.*` | frameless window, title bar, sidebar, status bar |
 | `res/` | the compiled-in icon, and the resource script that embeds it |
 | `src/sessionmodel.*` | `Entry`, `Session`, type detection, JSON |
