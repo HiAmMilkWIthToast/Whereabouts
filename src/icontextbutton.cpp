@@ -3,7 +3,6 @@
 
 #include <QFontMetrics>
 #include <QPainter>
-#include <QPixmap>
 #include <QStyleOptionButton>
 
 namespace {

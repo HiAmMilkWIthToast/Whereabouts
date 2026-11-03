@@ -9,7 +9,6 @@
 namespace Theme {
 
 QColor accent();
-void setAccent(const QColor &color);
 
 // The mark's own colour. The accent is the app's interactive colour and is used
 // by chips, sliders and focus rings; the logo is not one of those, and dressing
@@ -17,10 +16,6 @@ void setAccent(const QColor &color);
 // colours have used for archives since the first release, so it is already at
 // home in this palette.
 QColor brand();
-// Darker and lighter versions of the brand tone, for borders and hover states.
-QString brandDimName();
-QString brandBrightName();
-
 QString accentName();
 QString accentDimName();
 QString accentHoverName();

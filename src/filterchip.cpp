@@ -4,7 +4,6 @@
 #include <QFontMetrics>
 #include <QImage>
 #include <QPainter>
-#include <QPainterPath>
 
 FilterChip::FilterChip(const QString &label, int count, QWidget *parent)
     : QPushButton(parent)

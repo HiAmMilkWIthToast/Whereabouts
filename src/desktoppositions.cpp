@@ -1,6 +1,5 @@
 #include "desktoppositions.h"
 
-#include <QDir>
 #include <QGuiApplication>
 #include <QScreen>
 

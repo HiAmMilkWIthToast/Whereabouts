@@ -6,11 +6,11 @@
 #include "theme.h"
 
 #include <QApplication>
-#include <QClipboard>
 #include <QDesktopServices>
 #include <QFileInfo>
 #include <QHBoxLayout>
 #include <QKeyEvent>
+#include <QClipboard>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>

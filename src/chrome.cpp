@@ -2,25 +2,21 @@
 #include "theme.h"
 
 #include <QCloseEvent>
+#include <QDate>
+#include <QDesktopServices>
 #include <QHBoxLayout>
 #include <QLabel>
-#include <QDate>
-#include <QTime>
-#include <QTimer>
 #include <QMouseEvent>
 #include <QPainter>
-#include <QPainterPath>
 #include <QShowEvent>
 #include <QStyle>
-#include <QToolTip>
+#include <QTime>
+#include <QTimer>
+#include <QUrl>
 #include <QVBoxLayout>
 #include <QVariantAnimation>
 #include <QWindow>
-#include <QUrl>
-#include <QDesktopServices>
 
-#include <QApplication>
-#include <QScreen>
 
 #ifdef Q_OS_WIN
 #include <dwmapi.h>

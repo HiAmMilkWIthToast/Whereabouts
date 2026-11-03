@@ -1,7 +1,6 @@
 #include "sessionmodel.h"
 
 #include <QFile>
-#include <QFileInfo>
 #include <QJsonArray>
 #include <QSet>
 

@@ -3,14 +3,12 @@
 #include "theme.h"
 
 #include <QFontMetrics>
-#include <QHelpEvent>
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
 #include <QScrollBar>
 #include <QSet>
-#include <QToolTip>
 #include <QWheelEvent>
 
 #include <algorithm>
