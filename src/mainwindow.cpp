@@ -35,6 +35,7 @@
 #include <QSettings>
 #include <QStandardItemModel>
 #include <QTime>
+#include <QGridLayout>
 #include <QGuiApplication>
 #include <QScreen>
 #include <QStackedWidget>
@@ -269,7 +270,6 @@ QWidget *MainWindow::buildLibraryPage()
     newButton->setObjectName(QStringLiteral("primary"));
     newButton->setToolTip(QStringLiteral("Record this folder as it is now (Ctrl+N)"));
     head->addWidget(newButton, 0, Qt::AlignVCenter);
-
     root->addLayout(head);
     root->addSpacing(14);
 
@@ -332,36 +332,34 @@ QWidget *MainWindow::buildDetailPage()
     root->setSpacing(0);
 
     // ---- header
-    auto *head = new QHBoxLayout;
-    head->setSpacing(10);
+    // The back button belongs on the title's line, not level with the whole
+    // title-and-subtitle block: centred on that block it sat 8px below the
+    // "Desktop" baseline and read as misaligned. One grid holds the entire
+    // row, so the button, the title and the controls all share a line.
+    auto *headGrid = new QGridLayout(page);
+    headGrid->setContentsMargins(0, 0, 0, 0);
+    headGrid->setHorizontalSpacing(10);
+    headGrid->setVerticalSpacing(2);
+    // The title column takes the slack, so the controls stay hard right.
+    headGrid->setColumnStretch(1, 1);
 
     auto *back = new IconTextButton(Icons::Id::Home,
                                     QStringLiteral("Sessions"), page);
     back->setObjectName(QStringLiteral("backLink"));
     back->setToolTip(QStringLiteral("Back to every snapshot (Esc)"));
     back->setFixedHeight(24);
-    // The page title sits immediately after this button, so it needs a little
-    // breathing room to read as a separate control rather than a prefix.
-    head->addWidget(back);
-    head->addSpacing(6);
+    headGrid->addWidget(back, 0, 0, Qt::AlignLeft | Qt::AlignVCenter);
 
-    auto *titles = new QVBoxLayout;
-    titles->setSpacing(1);
     m_detailTitle = new QLabel(page);
     m_detailTitle->setObjectName(QStringLiteral("pageTitle"));
-    titles->addWidget(m_detailTitle);
-
-    m_detailMeta = new QLabel(page);
-    m_detailMeta->setObjectName(QStringLiteral("pageSubtitle"));
-    titles->addWidget(m_detailMeta);
-    head->addLayout(titles, 1);
+    headGrid->addWidget(m_detailTitle, 0, 1, Qt::AlignLeft | Qt::AlignVCenter);
 
     auto *search = new QLineEdit(page);
     search->setObjectName(QStringLiteral("field"));
     search->setPlaceholderText(QStringLiteral("Find an item"));
     search->setFixedWidth(180);
     search->setClearButtonEnabled(true);
-    head->addWidget(search, 0, Qt::AlignVCenter);
+    headGrid->addWidget(search, 0, 2, Qt::AlignRight | Qt::AlignVCenter);
     m_find = search;
 
     m_viewToggle = new IconTextButton(Icons::Id::List,
@@ -370,16 +368,22 @@ QWidget *MainWindow::buildDetailPage()
     m_viewToggle->setFixedWidth(76);
     m_viewToggle->setCheckable(true);
     m_viewToggle->setToolTip(QStringLiteral("Switch between the map and a sorted list"));
-    head->addWidget(m_viewToggle, 0, Qt::AlignVCenter);
+    headGrid->addWidget(m_viewToggle, 0, 3, Qt::AlignRight | Qt::AlignVCenter);
 
     auto *exportButton = new IconTextButton(Icons::Id::Export,
                                             QStringLiteral("Export"), page);
     exportButton->setObjectName(QStringLiteral("secondary"));
     exportButton->setToolTip(
         QStringLiteral("Write this snapshot out as a .session file"));
-    head->addWidget(exportButton, 0, Qt::AlignVCenter);
+    headGrid->addWidget(exportButton, 0, 4, Qt::AlignRight | Qt::AlignVCenter);
 
-    root->addLayout(head);
+    // The subtitle spans only the title column, so the right-hand controls
+    // stay on the title's row instead of being pulled down by the second line.
+    m_detailMeta = new QLabel(page);
+    m_detailMeta->setObjectName(QStringLiteral("pageSubtitle"));
+    headGrid->addWidget(m_detailMeta, 1, 1, Qt::AlignLeft | Qt::AlignVCenter);
+
+    root->addLayout(headGrid);
 
     // ---- kind filter chips, only for the kinds this session actually holds
     m_kindBar = new QWidget(page);
