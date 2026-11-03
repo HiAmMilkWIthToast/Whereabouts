@@ -1,0 +1,8 @@
+# Everything here is text with Windows line endings; the batch files need them.
+* text=auto eol=crlf
+
+# The shipped binary and the icons are not text.
+*.exe -text
+*.dll -text
+*.ico -text
+*.png -text
