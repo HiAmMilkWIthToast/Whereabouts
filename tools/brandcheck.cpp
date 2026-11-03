@@ -1,4 +1,5 @@
 
+#include <QDir>
 #include <QApplication>
 #include <QDesktopServices>
 #include <QElapsedTimer>
@@ -188,7 +189,7 @@ int main(int argc, char *argv[])
             x += (crop.width() + 10) * s;
         }
         sp.end();
-        stripImg.save(QStringLiteral("C:/Users/Kille/MonkeyCode/brand_states.png"));
+        stripImg.save(QDir::current().filePath(QStringLiteral("brand_states.png")));
     }
 
     out << (failures == 0 ? "BRANDCHECK PASSED\n" : "BRANDCHECK FAILED\n");

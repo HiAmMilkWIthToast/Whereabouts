@@ -1,4 +1,5 @@
 
+#include <QDir>
 #include <QApplication>
 #include <QImage>
 #include <QLineEdit>
@@ -81,7 +82,7 @@ int main(int argc, char *argv[])
     pump(250);
 
     const QString shot = argc > 1 ? QString::fromLocal8Bit(argv[1])
-                                  : QStringLiteral("C:/Users/Kille/MonkeyCode/shot_suggest.png");
+                                  : QDir::current().filePath(QStringLiteral("shot_suggest.png"));
     QImage img(window.width(), window.height(), QImage::Format_ARGB32_Premultiplied);
     img.fill(QColor(QStringLiteral("#0b0d10")));
     window.render(&img, QPoint(), QRegion(), QWidget::DrawChildren);

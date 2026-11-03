@@ -1,4 +1,5 @@
 
+#include <QDir>
 #include <QAbstractItemView>
 #include <QApplication>
 #include <QComboBox>
@@ -83,10 +84,10 @@ int main(int argc, char *argv[])
     box->showPopup();
     pump(400);
 
-    view->grab().save(QStringLiteral("C:/Users/Kille/MonkeyCode/shot_popup_view.png"));
+    view->grab().save(QDir::current().filePath(QStringLiteral("shot_popup_view.png")));
     if (container) {
         container->grab().save(
-            QStringLiteral("C:/Users/Kille/MonkeyCode/shot_popup_frame.png"));
+            QDir::current().filePath(QStringLiteral("shot_popup_frame.png")));
         out << "container size  : " << container->width() << "x"
             << container->height() << "\n";
     }

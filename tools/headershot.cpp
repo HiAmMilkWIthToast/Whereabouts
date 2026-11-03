@@ -1,4 +1,5 @@
 
+#include <QDir>
 #include <QApplication>
 #include <QComboBox>
 #include <QEventLoop>
@@ -60,7 +61,7 @@ int main(int argc, char *argv[])
                      QImage::Format_ARGB32_Premultiplied);
         detail.fill(QColor(QStringLiteral("#0b0d10")));
         window.render(&detail, QPoint(), QRegion(), QWidget::DrawChildren);
-        detail.save(QStringLiteral("C:/Users/Kille/MonkeyCode/shot_detail.png"));
+        detail.save(QDir::current().filePath(QStringLiteral("shot_detail.png")));
     }
 
     {
@@ -74,7 +75,7 @@ int main(int argc, char *argv[])
                    QImage::Format_ARGB32_Premultiplied);
         lib.fill(QColor(QStringLiteral("#0b0d10")));
         window.render(&lib, QPoint(), QRegion(), QWidget::DrawChildren);
-        lib.save(QStringLiteral("C:/Users/Kille/MonkeyCode/shot_library.png"));
+        lib.save(QDir::current().filePath(QStringLiteral("shot_library.png")));
     }
 
     window.presentSession(s);
@@ -91,10 +92,10 @@ int main(int argc, char *argv[])
     QImage img(window.width(), window.height(), QImage::Format_ARGB32_Premultiplied);
     img.fill(QColor(QStringLiteral("#0b0d10")));
     window.render(&img, QPoint(), QRegion(), QWidget::DrawChildren);
-    img.save(QStringLiteral("C:/Users/Kille/MonkeyCode/shot_header.png"));
+    img.save(QDir::current().filePath(QStringLiteral("shot_header.png")));
 
     if (auto *box = window.findChild<QComboBox *>(QStringLiteral("field"))) {
-        box->grab().save(QStringLiteral("C:/Users/Kille/MonkeyCode/shot_combo.png"));
+        box->grab().save(QDir::current().filePath(QStringLiteral("shot_combo.png")));
     }
     return 0;
 }

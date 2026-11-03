@@ -83,10 +83,10 @@ int main(int argc, char *argv[])
 
     const QString ico = argc > 1
         ? QString::fromLocal8Bit(argv[1])
-        : QStringLiteral("C:/Users/Kille/MonkeyCode/cairn-src/res/cairn.ico");
+        : QStringLiteral(CAIRN_RES_DIR "/cairn.ico");
     const QString png = argc > 2
         ? QString::fromLocal8Bit(argv[2])
-        : QStringLiteral("C:/Users/Kille/MonkeyCode/cairn-src/res/cairn-256.png");
+        : QStringLiteral(CAIRN_RES_DIR "/cairn-256.png");
 
     QList<QImage> images;
     for (int size : kSizes)

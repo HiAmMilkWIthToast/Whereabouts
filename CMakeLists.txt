@@ -123,6 +123,11 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tools/e2e.cpp")
     target_compile_definitions(cairn_suggestcheck PRIVATE
         CAIRN_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
 
+    # icotool rewrites the committed icon, so it defaults to res/ rather than to
+    # a path in the developer's home directory.
+    target_compile_definitions(cairn_icotool PRIVATE
+        CAIRN_RES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/res")
+
     # brandcheck reads the address out of the source, where it is written.
     target_compile_definitions(cairn_brandcheck PRIVATE
         CAIRN_SRC_DIR="${CMAKE_CURRENT_SOURCE_DIR}/src")
